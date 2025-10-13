@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:nyaya_connect/pages/login.dart';
 import 'onboarding_page_3.dart';
-import 'signup_page.dart';
 import '../../widgets/modern_button.dart';
 
 
@@ -22,7 +22,7 @@ class _OnboardingPage2State extends State<OnboardingPage2>
   void initState() {
     super.initState();
     final screenHeight =
-        MediaQueryData.fromWindow(WidgetsBinding.instance.window).size.height;
+        MediaQueryData.fromView(WidgetsBinding.instance.window).size.height;
 
     _controller = AnimationController(
       vsync: this,
@@ -90,7 +90,7 @@ class _OnboardingPage2State extends State<OnboardingPage2>
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const SignupPage()),
+                    MaterialPageRoute(builder: (_) => const AuthPage()),
                   );
                 },
                 child: const Text(

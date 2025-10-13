@@ -24,24 +24,24 @@ class ModernButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ButtonStyle(
-          elevation: MaterialStateProperty.resolveWith<double>((states) {
-            if (states.contains(MaterialState.pressed)) return 12;
+          elevation: WidgetStateProperty.resolveWith<double>((states) {
+            if (states.contains(WidgetState.pressed)) return 12;
             return 6;
           }),
-          backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+          backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
             // show gradient as overlay only if gradient is provided
-            if (states.contains(MaterialState.pressed) && gradient != null) {
+            if (states.contains(WidgetState.pressed) && gradient != null) {
               return Colors.transparent;
             }
             return Colors.white; // default button color
           }),
-          shadowColor: MaterialStateProperty.all(Colors.black54),
-          shape: MaterialStateProperty.all(
+          shadowColor: WidgetStateProperty.all(Colors.black54),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          overlayColor: MaterialStateProperty.resolveWith<Color?>(
+          overlayColor: WidgetStateProperty.resolveWith<Color?>(
             (states) {
-              if (states.contains(MaterialState.pressed)) {
+              if (states.contains(WidgetState.pressed)) {
                 // overlay with semi-transparent primary color
                 return gradient == null
                     ? Colors.blue.withOpacity(0.2)
@@ -50,7 +50,7 @@ class ModernButton extends StatelessWidget {
               return null;
             },
           ),
-          padding: MaterialStateProperty.all(
+          padding: WidgetStateProperty.all(
             const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           ),
         ),

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "694538072833",
+    "project_id": "nyayaconnect-free",
+    "storage_bucket": "nyayaconnect-free.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:694538072833:android:43d33e6b0da80addc9a100",
+        "android_client_info": {
+          "package_name": "com.example.nyaya_connect"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "694538072833-o7ks0k0mqu91i94f89jc02b333g7ulj4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAR8PavtlLrZXr8cHBzsJwcJ5OKYajCBl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "694538072833-o7ks0k0mqu91i94f89jc02b333g7ulj4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

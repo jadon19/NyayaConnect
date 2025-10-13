@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'onboarding_page_2.dart';
-import 'signup_page.dart';
+import '../login.dart';
 import '../../widgets/modern_button.dart';
 
 
@@ -22,7 +22,7 @@ class _OnboardingPage1State extends State<OnboardingPage1>
   void initState() {
     super.initState();
     final screenWidth =
-        MediaQueryData.fromWindow(WidgetsBinding.instance.window).size.width;
+        MediaQueryData.fromView(WidgetsBinding.instance.window).size.width;
 
     _controller = AnimationController(
       vsync: this,
@@ -142,7 +142,7 @@ class _OnboardingPage1State extends State<OnboardingPage1>
                                   CurvedAnimation(parent: a, curve: Curves.easeInOut);
                               return FadeTransition(opacity: curved, child: c);
                             },
-                            transitionDuration: const Duration(milliseconds: 500),
+                            transitionDuration: const Duration(milliseconds: 700),
                           ),
                         );
                       },
@@ -174,7 +174,7 @@ class _OnboardingPage1State extends State<OnboardingPage1>
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const SignupPage()),
+                    MaterialPageRoute(builder: (_) => const AuthPage()),
                   );
                 },
                 child: const Text(

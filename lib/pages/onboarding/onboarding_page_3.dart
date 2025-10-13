@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'signup_page.dart';
+import 'package:nyaya_connect/pages/login.dart';
 import '../../widgets/modern_button.dart';
 
 class OnboardingPage3 extends StatefulWidget {
@@ -19,7 +19,7 @@ class _OnboardingPage3State extends State<OnboardingPage3>
   void initState() {
     super.initState();
     final screenWidth =
-        MediaQueryData.fromWindow(WidgetsBinding.instance.window).size.width;
+        MediaQueryData.fromView(WidgetsBinding.instance.window).size.width;
 
     _controller = AnimationController(
       vsync: this,
@@ -97,7 +97,7 @@ class _OnboardingPage3State extends State<OnboardingPage3>
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.asset(
-                          'assets/onboarding3.png',
+                          'assets/onboarding3.jpg',
                           key: UniqueKey(), // prevent caching
                           fit: BoxFit.cover, // zoom/stretch to fill
                         ),
@@ -132,12 +132,12 @@ class _OnboardingPage3State extends State<OnboardingPage3>
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const SignupPage(),
+          pageBuilder: (_, __, ___) => const AuthPage(),
           transitionsBuilder: (_, a, __, c) {
             final curved = CurvedAnimation(parent: a, curve: Curves.easeInOut);
             return FadeTransition(opacity: curved, child: c);
           },
-          transitionDuration: const Duration(milliseconds: 500),
+          transitionDuration: const Duration(milliseconds: 700),
         ),
       );
     },
