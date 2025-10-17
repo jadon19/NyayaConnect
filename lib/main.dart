@@ -2,23 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:nyaya_connect/pages/ai_doubt_forum.dart';
+
 import 'pages/splash.dart';
 import 'pages/advocate/homescreen.dart';
 import 'pages/users/homescreen.dart';
+import 'pages/judge/homescreen.dart';
 
-
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await Firebase.initializeApp();
+    // ✅ Initialize Firebase and load .env *in parallel*
+    await Future.wait([
+      Firebase.initializeApp(),
+      dotenv.load(fileName: ".env"),
+    ]);
+
+    debugPrint('✅ Firebase initialized and .env loaded successfully');
+    debugPrint("✅ OpenAI Key: ${dotenv.env['OPENAI_API_KEY']}");
+    debugPrint("✅ Indian Kanoon Key: ${dotenv.env['INDIAN_KANOON_API_KEY']}");
   } catch (e) {
-    debugPrint('Firebase initialization error: $e');
+    debugPrint('Initialization error: $e');
   }
 
   runApp(const MyApp());
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -33,6 +45,9 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const RootPage(),
+      routes: {
+        '/aiDoubt': (context) => const AIDoubtForumPage(),
+      },
     );
   }
 }
@@ -44,7 +59,7 @@ class RootPage extends StatelessWidget {
   Future<Map<String, dynamic>?> _fetchUserData(String uid) async {
     try {
       final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (doc.exists) {
         return doc.data();
       }
@@ -87,11 +102,14 @@ class RootPage extends StatelessWidget {
           );
         }
 
-        final isLawyer = data['isLawyer'] ?? false;
+        final lawyerId = data['lawyerId'];
+        final judgeId = data['judgeId'];
         final userName = data['name'] ?? 'User';
 
         return ExitOnBackPage(
-          child: isLawyer
+          child: judgeId != null
+              ? HomeScreenJudge(userName: userName)
+              : lawyerId != null
               ? HomeScreenLawyer(userName: userName)
               : HomeScreenUser(userName: userName),
         );
