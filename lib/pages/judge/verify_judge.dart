@@ -5,14 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart'; // Firebase authentication
 import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore database
 import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage
 
-class VerifyLawyerScreen extends StatefulWidget {
-  const VerifyLawyerScreen({super.key});
+class VerifyJudgeScreen extends StatefulWidget {
+  const VerifyJudgeScreen({super.key});
 
   @override
-  State<VerifyLawyerScreen> createState() => _VerifyLawyerScreenState();
+  State<VerifyJudgeScreen> createState() => _VerifyJudgeScreenState();
 }
 
-class _VerifyLawyerScreenState extends State<VerifyLawyerScreen> {
+class _VerifyJudgeScreenState extends State<VerifyJudgeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _enrollmentController = TextEditingController();
   
@@ -77,8 +77,8 @@ Future<void> _submitVerification() async {
     // 1. Get lawyerId from users collection
     final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     if (!userDoc.exists) throw Exception('User data not found');
-    final lawyerId = userDoc['lawyerId'];
-    if (lawyerId == null) throw Exception('Lawyer ID not found');
+    final lawyerId = userDoc['judgeId'];
+    if (lawyerId == null) throw Exception('Judge ID not found');
 
     // 2. Upload files to Firebase Storage
     final storageRef = FirebaseStorage.instance.ref().child('lawyers/$lawyerId');
@@ -107,12 +107,6 @@ Future<void> _submitVerification() async {
       'enrollmentFile': enrollmentUrl ?? _enrollmentFilePath,
       'verificationSubmittedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    // ✅ Update user role & verification status in main users collection
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-      'isLawyer': true,
-      'verificationStatus': 'approved',
-    });
-
 
     setState(() {
       _isSubmitting = false;

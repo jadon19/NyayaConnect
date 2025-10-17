@@ -107,9 +107,8 @@ class _OnboardingPage3State extends State<OnboardingPage3>
 
                     // Paragraph
                     const Text(
-                      'Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n'
-                      'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n'
-                      'Ut enim ad minim veniam.',
+                      'Schedule consultations, upload and review documents,\n'
+                          'and track hearings — everything in one organized space.',
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         color: Colors.white,

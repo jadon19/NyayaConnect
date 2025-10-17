@@ -131,8 +131,8 @@ class _OnboardingPage2State extends State<OnboardingPage2>
 
                       // Paragraph
                       const Text(
-                        'Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n'
-                        'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+                        'Ask legal questions, understand Indian laws, and get instant insights.\n'
+                            'Your AI Doubt Forum helps you learn and resolve queries anytime.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,

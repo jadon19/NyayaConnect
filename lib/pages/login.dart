@@ -14,13 +14,13 @@ class SignupData {
   final String name;
   final String email;
   final String password;
-  final bool isLawyer;
+  final UserRole role;
 
   SignupData({
     required this.name,
     required this.email,
     required this.password,
-    this.isLawyer = false,
+    required this.role
   });
 }
 
@@ -44,10 +44,12 @@ class AuthPage extends StatefulWidget {
 }
 
 String loginError = '';
-
+enum UserRole { client, lawyer, judge }
 class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   bool isLoginSelected = true;
   bool isLawyer = false;
+  bool isJudge=false;
+  UserRole selectedRole = UserRole.client;
   bool obscurePassword = true;
   bool showForgotPasswordField = false;
   bool isLoading = false; // for showing buffer
@@ -262,10 +264,19 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   }
 
   void toggleLawyer(bool? value) {
-    setState(() {
-      isLawyer = value ?? false;
-    });
-  }
+  setState(() {
+    isLawyer = value ?? false;
+    if (isLawyer) isJudge = false; // prevent both being checked
+  });
+}
+
+void toggleJudge(bool? value) {
+  setState(() {
+    isJudge = value ?? false;
+    if (isJudge) isLawyer = false; // prevent both being checked
+  });
+}
+
 
   void toggleAuth(bool? value) {
     setState(() {
@@ -312,25 +323,34 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   // Add this at the top of your State class
 
   void navigateToVerification() {
-    if (!validateSignup()) return;
+  if (!validateSignup()) return;
 
-    final data = SignupData(
-      name: signupName.text.trim(),
-      email: signupEmail.text.trim(),
-      password: signupPassword.text.trim(),
-      isLawyer: isLawyer, // keep checkbox value
-    );
-
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => VerificationPage(signupData: data),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
+  UserRole selectedRole;
+  if (isLawyer) {
+    selectedRole = UserRole.lawyer;
+  } else if (isJudge) {
+    selectedRole = UserRole.judge;
+  } else {
+    selectedRole = UserRole.client;
   }
+
+  final data = SignupData(
+    name: signupName.text.trim(),
+    email: signupEmail.text.trim(),
+    password: signupPassword.text.trim(),
+    role: selectedRole, // pass enum
+  );
+
+  Navigator.pushReplacement(
+    context,
+    PageRouteBuilder(
+      pageBuilder: (_, __, ___) => VerificationPage(signupData: data),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+    ),
+  );
+}
+
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -1004,6 +1024,34 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                                               vertical: -4,
                                             ),
                                           ),
+                                          CheckboxListTile(
+                                            activeColor: const Color(
+                                              0xFF004AAD,
+                                            ),
+                                            checkColor: Colors.white,
+                                            value: isJudge,
+                                            onChanged: toggleJudge,
+                                            title: const Text(
+                                              'Register as a Judge',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Color.fromARGB(
+                                                  255,
+                                                  84,
+                                                  135,
+                                                  202,
+                                                ),
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            controlAffinity:
+                                                ListTileControlAffinity.leading,
+                                            contentPadding: EdgeInsets.zero,
+                                            visualDensity: const VisualDensity(
+                                              horizontal: -2,
+                                              vertical: -4,
+                                            ),
+                                          ),
                                         ],
                                       ),
                               ),
@@ -1056,28 +1104,40 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                           triggerReveal(
                             isSignup: true,
                             onComplete: () {
+                              // ✅ Determine actual user role from checkboxes
+                              UserRole finalRole;
+                              if (isLawyer) {
+                                finalRole = UserRole.lawyer;
+                              } else if (isJudge) {
+                                finalRole = UserRole.judge;
+                              } else {
+                                finalRole = UserRole.client;
+                              }
+
+                              // ✅ Debug print for confirmation
+                              debugPrint("🧾 Selected Role before verification: $finalRole");
+
+                              // ✅ Create SignupData with correct role
                               final data = SignupData(
                                 name: signupName.text.trim(),
                                 email: signupEmail.text.trim(),
                                 password: signupPassword.text.trim(),
-                                isLawyer: isLawyer,
+                                role: finalRole,
                               );
 
+                              // ✅ Navigate to verification page
                               Navigator.pushReplacement(
                                 context,
                                 PageRouteBuilder(
                                   pageBuilder: (_, __, ___) =>
                                       VerificationPage(signupData: data),
-                                  transitionsBuilder:
-                                      (_, animation, __, child) =>
-                                          FadeTransition(
-                                            opacity: animation,
-                                            child: child,
-                                          ),
+                                  transitionsBuilder: (_, animation, __, child) =>
+                                      FadeTransition(opacity: animation, child: child),
                                 ),
                               );
                             },
                           );
+
                         });
                       },
                       child: AnimatedContainer(

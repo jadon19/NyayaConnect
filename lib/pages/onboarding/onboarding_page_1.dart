@@ -116,9 +116,8 @@ class _OnboardingPage1State extends State<OnboardingPage1>
 
                     // Paragraph
                     const Text(
-                      'Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n'
-                      'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n'
-                      'Ut enim ad minim veniam.',
+                      'Empowering citizens and lawyers through one digital platform.\n'
+                          'Connect, consult, and manage legal matters securely — all in one place.',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
