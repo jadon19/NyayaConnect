@@ -9,7 +9,7 @@ import '../notification_screen.dart';
 import 'verify_advocate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'sidebar_menu/profile.dart';
 class HomeScreenLawyer extends StatefulWidget {
   final String userName;
 
@@ -297,7 +297,7 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
                   GestureDetector(
                     onTap: _navigateToVerification,
                     child: const Text(
-                      "Get verified now",
+                      "Get verified now!",
                       style: TextStyle(
                           fontSize: 14,
                           color: Color(0xFF0D47A1),
@@ -321,7 +321,7 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
 
   Widget _buildSidebar() {
     final menuItems = [
-      {'icon': Icons.person, 'label': 'Profile', 'route': '/profile'},
+      {'icon': Icons.person, 'label': 'Profile', 'page': ProfileScreen()},
       {'icon': Icons.description, 'label': 'My Documents', 'route': '/documents'},
       {'icon': Icons.call, 'label': 'Call Logs', 'route': '/callLogs'},
       {'icon': Icons.payment, 'label': 'Transactions', 'route': '/transactions'},
@@ -403,8 +403,14 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
                               style: const TextStyle(
                                   color: Colors.black87, fontSize: 15)),
                           onTap: () {
-                            Navigator.pushNamed(
-                                context, menuItems[index]['route'] as String);
+                            Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                menuItems[index]['page']
+                                    as Widget, // navigate to page
+                          ),
+                        );
                             _toggleSidebar();
                           },
                         ),

@@ -137,72 +137,91 @@ class _VerificationPageState extends State<VerificationPage>
   // Save user info to Firestore and navigate
   // Save user info to Firebase Auth & Firestore (exclude password from Firestore)
   Future<void> _saveUserToFirebase() async {
-    setState(() => isLoading = true);
+  setState(() => isLoading = true);
 
-    try {
-      // 1️⃣ Create user
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: widget.signupData.email.trim(),
-        password: widget.signupData.password,
-      );
+  try {
+    // 1️⃣ Create user in Firebase Auth
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+      email: widget.signupData.email.trim(),
+      password: widget.signupData.password,
+    );
 
-      final user = userCredential.user;
-      if (user == null) throw Exception('User creation failed.');
+    final user = userCredential.user;
+    if (user == null) throw Exception('User creation failed.');
 
-      // 2️⃣ Prepare data
-      final userId = generateUserId();
-      final selectedRole = widget.signupData.role.toString().split('.').last;
+    // 2️⃣ Prepare user data
+    final userId = generateUserId();
+    final selectedRole = widget.signupData.role.toString().split('.').last;
 
-      debugPrint("🧾 User Role being saved: $selectedRole");
+    debugPrint("🧾 User Role being saved: $selectedRole");
 
-      final userData = {
-        'userId': userId,
-        'name': widget.signupData.name.trim(),
-        'email': widget.signupData.email.trim(),
-        'phone': _phoneController.text.trim(),
-        'role': selectedRole, // ✅ Correct role stored
-        'verificationStatus':
-        selectedRole == 'lawyer' ? 'pending' : 'approved', // optional
-        'lawyerId':
-        selectedRole == 'lawyer' ? 'LAW${userId.substring(3, 9)}' : null,
-        'judgeId':
-        selectedRole == 'judge' ? 'JDG${userId.substring(3, 9)}' : null,
+    final userData = {
+      'userId': userId,
+      'name': widget.signupData.name.trim(),
+      'email': widget.signupData.email.trim(),
+      'phone': _phoneController.text.trim(),
+      'role': selectedRole,
+      'lawyerId': selectedRole == 'lawyer' ? 'LAW${userId.substring(3, 9)}' : null,
+      'judgeId': selectedRole == 'judge' ? 'JDG${userId.substring(3, 9)}' : null,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    // 3️⃣ Save user to Firestore
+    await _firestore.collection('users').doc(user.uid).set(userData);
+
+    // 4️⃣ ✅ Create placeholder document based on role
+    if (selectedRole == 'lawyer') {
+      final lawyerId = userData['lawyerId'] as String?;
+      await _firestore.collection('lawyers').doc(lawyerId).set({
+        'userId': user.uid,
+        'isVerified': false,
+        'verificationStatus': 'not_submitted',
         'createdAt': FieldValue.serverTimestamp(),
-      };
+      }, SetOptions(merge: true));
 
-      // 3️⃣ Save to Firestore
-      await _firestore.collection('users').doc(user.uid).set(userData);
+      debugPrint('📄 Placeholder lawyer doc created for $lawyerId');
+    } else if (selectedRole == 'judge') {
+      final judgeId = userData['judgeId'] as String?;
+      await _firestore.collection('judges').doc(judgeId).set({
+        'userId': user.uid,
+        'isVerified': false,
+        'verificationStatus': 'not_submitted',
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-      // 4️⃣ Debug check
-      final check = await _firestore.collection('users').doc(user.uid).get();
-      debugPrint("🔥 Firestore saved data: ${check.data()}");
-
-      // 5️⃣ Navigate
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const RootPage()),
-              (route) => false,
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      String message = 'Authentication failed.';
-      if (e.code == 'email-already-in-use') {
-        message = 'This email is already registered.';
-      } else if (e.code == 'weak-password') {
-        message = 'Please use a stronger password.';
-      } else if (e.code == 'invalid-email') {
-        message = 'Invalid email format.';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error saving user: $e")),
-      );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+      debugPrint('📄 Placeholder judge doc created for $judgeId');
     }
+
+    // 5️⃣ Debug check
+    final check = await _firestore.collection('users').doc(user.uid).get();
+    debugPrint("🔥 Firestore saved data: ${check.data()}");
+
+    // 6️⃣ Navigate
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const RootPage()),
+        (route) => false,
+      );
+    }
+  } on FirebaseAuthException catch (e) {
+    String message = 'Authentication failed.';
+    if (e.code == 'email-already-in-use') {
+      message = 'This email is already registered.';
+    } else if (e.code == 'weak-password') {
+      message = 'Please use a stronger password.';
+    } else if (e.code == 'invalid-email') {
+      message = 'Invalid email format.';
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error saving user: $e")),
+    );
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
 
 
 

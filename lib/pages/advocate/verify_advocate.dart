@@ -65,61 +65,79 @@ class _VerifyLawyerScreenState extends State<VerifyLawyerScreen> {
     });
   }
 Future<void> _submitVerification() async {
+  // Step 1️⃣ — Validate user input
   _validateForm();
   if (_enrollmentError || _aadharError || _enrollmentFileError) return;
 
   setState(() => _isSubmitting = true);
 
   try {
+    // Step 2️⃣ — Ensure user is logged in
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User not logged in');
 
-    // 1. Get lawyerId from users collection
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    // Step 3️⃣ — Fetch lawyerId from `users` collection
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
     if (!userDoc.exists) throw Exception('User data not found');
     final lawyerId = userDoc['lawyerId'];
-    if (lawyerId == null) throw Exception('Lawyer ID not found');
+    if (lawyerId == null || lawyerId.isEmpty) {
+      throw Exception('Lawyer ID not found in user document');
+    }
 
-    // 2. Upload files to Firebase Storage
-    final storageRef = FirebaseStorage.instance.ref().child('lawyers/$lawyerId');
+    // Step 4️⃣ — Upload files to Firebase Storage
+    final storageRef =
+        FirebaseStorage.instance.ref().child('lawyers/$lawyerId');
+
     String? aadharUrl;
     String? enrollmentUrl;
 
+    // Upload Aadhar card
     if (_aadharFilePath != null) {
       final aadharFile = File(_aadharFilePath!);
-      final task = await storageRef.child('aadhar.${_aadharFilePath!.split('.').last}').putFile(aadharFile);
-      aadharUrl = await task.ref.getDownloadURL();
+      final aadharTask = await storageRef
+          .child('aadhar.${_aadharFilePath!.split('.').last}')
+          .putFile(aadharFile);
+      aadharUrl = await aadharTask.ref.getDownloadURL();
     }
 
+    // Upload Bar Council Enrollment certificate (scanned copy)
     if (_enrollmentFilePath != null) {
       final enrollmentFile = File(_enrollmentFilePath!);
-      final task = await storageRef.child('enrollment.${_enrollmentFilePath!.split('.').last}').putFile(enrollmentFile);
-      enrollmentUrl = await task.ref.getDownloadURL();
+      final enrollmentTask = await storageRef
+          .child('enrollment_certificate.${_enrollmentFilePath!.split('.').last}')
+          .putFile(enrollmentFile);
+      enrollmentUrl = await enrollmentTask.ref.getDownloadURL();
     }
 
-    // 3. Write to `lawyers` collection (create or update)
+    // Step 5️⃣ — Create/Update lawyer document in Firestore
     await FirebaseFirestore.instance.collection('lawyers').doc(lawyerId).set({
       'userId': user.uid,
+      'barEnrollmentNumber': _enrollmentController.text.trim(), // e.g. MAH/23/2015
+      'aadharFile': aadharUrl,
+      'enrollmentFile': enrollmentUrl,
       'verificationStatus': 'pending',
       'isVerified': false,
-      'enrollmentNumber': _enrollmentController.text.trim(),
-      'aadharFile': aadharUrl ?? _aadharFilePath,
-      'enrollmentFile': enrollmentUrl ?? _enrollmentFilePath,
       'verificationSubmittedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    // ✅ Update user role & verification status in main users collection
+
+    // Step 6️⃣ — Update user role & status in `users` collection
     await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
       'isLawyer': true,
-      'verificationStatus': 'approved',
+      'lawyerId': lawyerId,
+      'verificationStatus': 'pending',
     });
 
-
+    // Step 7️⃣ — Final UI update
     setState(() {
       _isSubmitting = false;
       _isSubmitted = true;
     });
 
-    // Redirect after 2 seconds
+    // Step 8️⃣ — Redirect user after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) Navigator.pop(context, true);
     });
@@ -127,13 +145,10 @@ Future<void> _submitVerification() async {
   } catch (e) {
     setState(() => _isSubmitting = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to submit verification: $e')),
+      SnackBar(content: Text('❌ Failed to submit verification: $e')),
     );
   }
 }
-
-
-
 
   @override
   Widget build(BuildContext context) {

@@ -17,6 +17,14 @@ import 'documents/consultation_summaries.dart';
 import 'documents/court_orders.dart';
 import 'documents/legal_templates.dart';
 import 'documents/supporting_documents.dart';
+import 'sidebar_menu/call_logs.dart';
+import 'sidebar_menu/transactions.dart';
+import 'sidebar_menu/cases.dart';
+import 'sidebar_menu/track_case.dart';
+import 'sidebar_menu/profile.dart';
+import 'sidebar_menu/documents.dart';
+import 'sidebar_menu/feedback.dart';
+import 'package:share_plus/share_plus.dart';
 
 class HomeScreenUser extends StatefulWidget {
   final String userName;
@@ -63,7 +71,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MyApp()),
-            (route) => false,
+        (route) => false,
       );
     } catch (e) {
       debugPrint('Logout error: $e');
@@ -178,15 +186,35 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   // ✅ Redesigned Sidebar (light)
   Widget _buildSidebar() {
     final menuItems = [
-      {'icon': Icons.person, 'label': 'Profile'},
-      {'icon': Icons.folder, 'label': 'My Documents'},
-      {'icon': Icons.call, 'label': 'Call Logs'},
-      {'icon': Icons.payment, 'label': 'Transactions'},
-      {'icon': Icons.work, 'label': 'My Cases'},
-      {'icon': Icons.location_on, 'label': 'Track Case'},
-      {'icon': Icons.support_agent, 'label': 'Support'},
-      {'icon': Icons.share, 'label': 'Share'},
-      {'icon': Icons.feedback, 'label': 'Feedback'},
+      {'icon': Icons.person, 'label': 'Profile', 'page': ProfileScreen()},
+      {
+        'icon': Icons.folder,
+        'label': 'My Documents',
+        'page': MyDocumentsScreen(),
+      },
+      {'icon': Icons.call, 'label': 'Call Logs', 'page': CallLogsScreen()},
+      {
+        'icon': Icons.payment,
+        'label': 'Transactions',
+        'page': TransactionsScreen(),
+      },
+      {'icon': Icons.work, 'label': 'My Cases', 'page': MyCasesScreen()},
+      {
+        'icon': Icons.location_on,
+        'label': 'Track Case',
+        'page': TrackCaseScreen(),
+      },
+      {
+        'icon': Icons.share,
+        'label': 'Share',
+        'action': () async {
+          // Example using share_plus package
+          await Share.share(
+            'Check out this amazing app: https://play.google.com/store/apps/details?id=com.example.app',
+          );
+        },
+      },
+      {'icon': Icons.feedback, 'label': 'Feedback', 'page': FeedbackScreen()},
     ];
 
     return Material(
@@ -237,11 +265,30 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                 child: ListView.builder(
                   itemCount: menuItems.length,
                   itemBuilder: (_, i) => ListTile(
-                    leading: Icon(menuItems[i]['icon'] as IconData,
-                        color: Colors.blue.shade700),
-                    title: Text(menuItems[i]['label'] as String,
-                        style: const TextStyle(color: Colors.black87)),
-                    onTap: _closeSidebar,
+                    leading: Icon(
+                      menuItems[i]['icon'] as IconData,
+                      color: Colors.blue.shade700,
+                    ),
+                    title: Text(
+                      menuItems[i]['label'] as String,
+                      style: const TextStyle(color: Colors.black87),
+                    ),
+                    onTap: () {
+                      _closeSidebar();
+                      if (menuItems[i]['action'] != null) {
+                        (menuItems[i]['action'] as Function?)?.call();
+                      } else if (menuItems[i]['page'] != null) {
+                        // close sidebar first
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                menuItems[i]['page']
+                                    as Widget, // navigate to page
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ),
               ),
@@ -254,8 +301,10 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                     minimumSize: const Size.fromHeight(44),
                   ),
                   icon: const Icon(Icons.logout, color: Colors.white),
-                  label:
-                  const Text('Logout', style: TextStyle(color: Colors.white)),
+                  label: const Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -268,9 +317,21 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   // Quick Actions with icons
   Widget _buildQuickActions() {
     final actions = [
-      {'title': 'Consult Lawyer', 'icon': Icons.gavel, 'page': const ConsultLawyerPage()},
-      {'title': 'Document Review', 'icon': Icons.description, 'page': const DocumentReviewPage()},
-      {'title': 'Meeting Scheduled', 'icon': Icons.calendar_today, 'page': const MeetingScheduledPage()},
+      {
+        'title': 'Consult Lawyer',
+        'icon': Icons.gavel,
+        'page': const ConsultLawyerPage(),
+      },
+      {
+        'title': 'Document Review',
+        'icon': Icons.description,
+        'page': const DocumentReviewPage(),
+      },
+      {
+        'title': 'Meeting Scheduled',
+        'icon': Icons.calendar_today,
+        'page': const MeetingScheduledPage(),
+      },
     ];
 
     return Padding(
@@ -293,13 +354,17 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.blue.shade100,
-                          blurRadius: 6,
-                          offset: const Offset(0, 3))
+                        color: Colors.blue.shade100,
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
-                  child: Icon(a['icon'] as IconData,
-                      color: Colors.blue.shade700, size: 30),
+                  child: Icon(
+                    a['icon'] as IconData,
+                    color: Colors.blue.shade700,
+                    size: 30,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -344,18 +409,26 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.blue.shade100,
-                        blurRadius: 6,
-                        offset: const Offset(0, 3))
+                      color: Colors.blue.shade100,
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
                   ],
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.volunteer_activism,
-                      color: Colors.green, size: 30),
-                  title: Text(d['title'] ?? 'Pro Bono Opportunity',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(d['description'] ?? '',
-                      style: const TextStyle(color: Colors.black87)),
+                  leading: const Icon(
+                    Icons.volunteer_activism,
+                    color: Colors.green,
+                    size: 30,
+                  ),
+                  title: Text(
+                    d['title'] ?? 'Pro Bono Opportunity',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    d['description'] ?? '',
+                    style: const TextStyle(color: Colors.black87),
+                  ),
                 ),
               ),
             );
@@ -406,15 +479,19 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   Text(
                     title,
                     style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     description,
                     style: const TextStyle(
-                        fontSize: 13, color: Colors.black54, height: 1.3),
+                      fontSize: 13,
+                      color: Colors.black54,
+                      height: 1.3,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Align(
@@ -423,17 +500,22 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       onPressed: onTap,
-                      child: Text(buttonText,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13)),
+                      child: Text(
+                        buttonText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -444,7 +526,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
       ),
     );
   }
-
 
   Widget _buildWelcomeBanner() => Container(
     width: double.infinity,
@@ -468,8 +549,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
           child: const CircleAvatar(
             radius: 26,
             backgroundColor: Colors.white,
-            child:
-            Icon(Icons.person, color: Color(0xFF42A5F5), size: 28),
+            child: Icon(Icons.person, color: Color(0xFF42A5F5), size: 28),
           ),
         ),
         const SizedBox(width: 14),
@@ -477,16 +557,22 @@ class _HomeScreenUserState extends State<HomeScreenUser>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Good ${_getGreeting()},",
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500)),
-              Text(widget.userName,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                "Good ${_getGreeting()},",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                widget.userName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -497,11 +583,31 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   // Restored Documents horizontal list (Case files, Consultation Summaries, Court Orders, Legal Templates, Supporting Documents)
   Widget _buildDocuments() {
     final List<Map<String, dynamic>> docs = [
-      {'title': 'Case files', 'page': const CaseFilesPage(), 'icon': Icons.folder_shared},
-      {'title': 'Consultation Summaries', 'page': const ConsultationSummariesPage(), 'icon': Icons.article},
-      {'title': 'Court Orders', 'page': const CourtOrdersPage(), 'icon': Icons.gavel},
-      {'title': 'Legal Templates', 'page': const LegalTemplatesPage(), 'icon': Icons.description},
-      {'title': 'Supporting Documents', 'page': const SupportingDocumentsPage(), 'icon': Icons.attach_file},
+      {
+        'title': 'Case files',
+        'page': const CaseFilesPage(),
+        'icon': Icons.folder_shared,
+      },
+      {
+        'title': 'Consultation Summaries',
+        'page': const ConsultationSummariesPage(),
+        'icon': Icons.article,
+      },
+      {
+        'title': 'Court Orders',
+        'page': const CourtOrdersPage(),
+        'icon': Icons.gavel,
+      },
+      {
+        'title': 'Legal Templates',
+        'page': const LegalTemplatesPage(),
+        'icon': Icons.description,
+      },
+      {
+        'title': 'Supporting Documents',
+        'page': const SupportingDocumentsPage(),
+        'icon': Icons.attach_file,
+      },
     ];
 
     return SizedBox(
@@ -523,17 +629,30 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 4))
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(d['icon'] as IconData, color: Colors.blue.shade700, size: 30),
+                  Icon(
+                    d['icon'] as IconData,
+                    color: Colors.blue.shade700,
+                    size: 30,
+                  ),
                   const SizedBox(height: 8),
-                  Text(d['title']?.toString() ?? '',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(
+                    d['title']?.toString() ?? '',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -588,11 +707,14 @@ class _HomeScreenUserState extends State<HomeScreenUser>
 
   Widget _buildSectionHeader(String title) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-    child: Text(title,
-        style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87)),
+    child: Text(
+      title,
+      style: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+    ),
   );
 
   // Main body content (placed documents and learning back into content)
@@ -636,7 +758,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   _buildLegendCard(
                     title: "E-Court",
                     description:
-                    "Access virtual courtrooms and manage your cases digitally.",
+                        "Access virtual courtrooms and manage your cases digitally.",
                     buttonText: "Enter a courtroom",
                     onTap: () => Navigator.pushNamed(context, '/eCourt'),
                     icon: Icons.account_balance_outlined,
@@ -646,7 +768,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   _buildLegendCard(
                     title: "AI Doubt Forum",
                     description:
-                    "Get AI-powered assistance for legal queries and case research.",
+                        "Get AI-powered assistance for legal queries and case research.",
                     buttonText: "Ask AI Agent",
                     onTap: () => Navigator.pushNamed(context, '/aiDoubt'),
                     icon: Icons.smart_toy_outlined,
@@ -670,7 +792,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
       ),
     );
   }
-
 
   Widget _buildTestimonials() {
     return SizedBox(
@@ -714,8 +835,10 @@ class _HomeScreenUserState extends State<HomeScreenUser>
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context),
-            child: const Text('Get Help Now',
-                style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Get Help Now',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
