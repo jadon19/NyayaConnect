@@ -42,7 +42,7 @@ class _MeetingScheduledPageState extends State<MeetingScheduledPage> {
     setState(() {
       _meetings.add({
         'title': 'Meeting on ${pickedDate.day}/${pickedDate.month}/${pickedDate.year}',
-        'time': '${pickedTime.format(context)}',
+        'time': pickedTime.format(context),
       });
     });
 
