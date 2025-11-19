@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'login.dart'; // For SignupData
+import 'login.dart';
 import 'package:pinput/pinput.dart';
 import 'dart:async';
 import 'package:lottie/lottie.dart';
@@ -10,6 +10,7 @@ import 'dart:math';
 
 class VerificationPage extends StatefulWidget {
   final SignupData signupData;
+
   const VerificationPage({super.key, required this.signupData});
 
   @override
@@ -29,17 +30,16 @@ class _VerificationPageState extends State<VerificationPage>
   bool otpSent = false;
   int resendSeconds = 30;
   bool canResend = false;
-
   String? phoneError;
   String? otpError;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  Timer? _resendTimer;
 
   @override
   void initState() {
     super.initState();
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -55,175 +55,353 @@ class _VerificationPageState extends State<VerificationPage>
     _animationController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _resendTimer?.cancel();
     super.dispose();
   }
 
   void startResendTimer() {
+    _resendTimer?.cancel();
     canResend = false;
     resendSeconds = 30;
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (resendSeconds > 0) {
-          resendSeconds--;
-        } else {
-          canResend = true;
-          timer.cancel();
-        }
-      });
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (resendSeconds > 0) {
+            resendSeconds--;
+          } else {
+            canResend = true;
+            timer.cancel();
+          }
+        });
+      } else {
+        timer.cancel();
+      }
     });
   }
 
-  // Send OTP
   Future<void> sendOTP(String phoneNumber) async {
-    if (phoneNumber.isEmpty) return;
+    if (phoneNumber.isEmpty) {
+      setState(() {
+        phoneError = "Please enter a valid phone number";
+      });
+      return;
+    }
+
+    if (phoneNumber.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phoneNumber)) {
+      setState(() {
+        phoneError = "Please enter a valid 10-digit phone number";
+        isLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       isLoading = true;
       phoneError = null;
     });
 
-    await _auth.verifyPhoneNumber(
-      phoneNumber: '+91$phoneNumber',
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _auth.signInWithCredential(credential);
-        await _saveUserToFirebase();
-      },
-      verificationFailed: (e) {
-        setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Verification failed: ${e.message}")),
-        );
-      },
-      codeSent: (verificationId, resendToken) {
-        setState(() {
-          _verificationId = verificationId;
-          otpSent = true;
-          isLoading = false;
-        });
-        _animationController.forward();
-        startResendTimer();
-      },
-      codeAutoRetrievalTimeout: (verificationId) {
-        _verificationId = verificationId;
-      },
-    );
-  }
-
-  // Verify OTP entered manually
-  Future<void> verifyOTP() async {
-    if (_otpController.text.isEmpty || _verificationId == null) return;
-
-    final credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: _otpController.text,
-    );
-
     try {
-      setState(() => isLoading = true);
-      await _auth.signInWithCredential(credential);
-      await _saveUserToFirebase();
+      await _auth.verifyPhoneNumber(
+        phoneNumber: '+91$phoneNumber',
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          try {
+            await _auth.signInWithCredential(credential);
+            await _saveUserToFirebase();
+          } catch (e) {
+            if (mounted) {
+              setState(() => isLoading = false);
+              _showError('Auto-verification failed: $e');
+            }
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          if (mounted) {
+            setState(() => isLoading = false);
+            String errorMsg = "Verification failed";
+            if (e.code == 'invalid-phone-number') {
+              errorMsg = "Invalid phone number format";
+            } else if (e.code == 'too-many-requests') {
+              errorMsg = "Too many requests. Please try again later";
+            } else {
+              errorMsg = e.message ?? errorMsg;
+            }
+            setState(() => phoneError = errorMsg);
+          }
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          if (mounted) {
+            setState(() {
+              _verificationId = verificationId;
+              otpSent = true;
+              isLoading = false;
+            });
+            _animationController.forward();
+            startResendTimer();
+          }
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
     } catch (e) {
-      setState(() => isLoading = false);
-      setState(() {
-        otpError = "Invalid OTP. Try again.";
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          phoneError = "Failed to send OTP: $e";
+        });
+      }
     }
   }
+
+  Future<void> verifyOTP() async {
+    if (_otpController.text.isEmpty) {
+      setState(() {
+        otpError = "Please enter the OTP";
+      });
+      return;
+    }
+
+    if (_verificationId == null) {
+      setState(() {
+        otpError = "OTP not sent. Please send OTP first";
+      });
+      return;
+    }
+
+    try {
+      setState(() {
+        isLoading = true;
+        otpError = null;
+      });
+
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: _otpController.text.trim(),
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      
+      await _saveUserToFirebase(userCredential.user);
+      
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          if (e.code == 'invalid-verification-code') {
+            otpError = "Invalid OTP. Please try again.";
+          } else if (e.code == 'session-expired') {
+            otpError = "OTP expired. Please request a new one.";
+          } else {
+            otpError = "Verification failed: ${e.message}";
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          otpError = "Error: $e";
+        });
+      }
+    }
+  }
+
   String generateUserId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
     return 'USR${List.generate(6, (index) => chars[random.nextInt(chars.length)]).join()}';
   }
-  // Save user info to Firestore and navigate
-  // Save user info to Firebase Auth & Firestore (exclude password from Firestore)
-  Future<void> _saveUserToFirebase() async {
-  setState(() => isLoading = true);
 
-  try {
-    // 1️⃣ Create user in Firebase Auth
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: widget.signupData.email.trim(),
-      password: widget.signupData.password,
-    );
+  // ✅ FIXED: Save user to Firestore with password and proper error handling
+  Future<void> _saveUserToFirebase([User? phoneAuthUser]) async {
+    if (!mounted) return;
+    
+    setState(() => isLoading = true);
 
-    final user = userCredential.user;
-    if (user == null) throw Exception('User creation failed.');
+    try {
+      User? firebaseUser = phoneAuthUser ?? _auth.currentUser;
+      
+      // If no user exists, create one with email/password
+      if (firebaseUser == null) {
+        try {
+          final userCredential = await _auth.createUserWithEmailAndPassword(
+            email: widget.signupData.email.trim(),
+            password: widget.signupData.password,
+          );
+          firebaseUser = userCredential.user;
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'email-already-in-use') {
+            try {
+              final userCredential = await _auth.signInWithEmailAndPassword(
+                email: widget.signupData.email.trim(),
+                password: widget.signupData.password,
+              );
+              firebaseUser = userCredential.user;
+            } catch (signInError) {
+              throw Exception('Email already in use and password incorrect');
+            }
+          } else {
+            rethrow;
+          }
+        }
+      } else {
+        // User exists from phone auth, link email/password if not already linked
+        if (firebaseUser.email == null || firebaseUser.email!.isEmpty) {
+          try {
+            final credential = EmailAuthProvider.credential(
+              email: widget.signupData.email.trim(),
+              password: widget.signupData.password,
+            );
+            await firebaseUser.linkWithCredential(credential);
+          } catch (e) {
+            debugPrint('Could not link email: $e');
+          }
+        }
+      }
 
-    // 2️⃣ Prepare user data
-    final userId = generateUserId();
-    final selectedRole = widget.signupData.role.toString().split('.').last;
+      if (firebaseUser == null) {
+        throw Exception('Failed to create or retrieve user');
+      }
 
-    debugPrint("🧾 User Role being saved: $selectedRole");
+      // Prepare user data - ✅ ADDED PASSWORD FIELD
+      final userId = generateUserId();
+      final selectedRole = widget.signupData.role.toString().split('.').last;
 
-    final userData = {
-      'userId': userId,
-      'name': widget.signupData.name.trim(),
-      'email': widget.signupData.email.trim(),
-      'phone': _phoneController.text.trim(),
-      'role': selectedRole,
-      'lawyerId': selectedRole == 'lawyer' ? 'LAW${userId.substring(3, 9)}' : null,
-      'judgeId': selectedRole == 'judge' ? 'JDG${userId.substring(3, 9)}' : null,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
+      debugPrint("🧾 User Role being saved: $selectedRole");
+      debugPrint("📱 Phone number: ${_phoneController.text.trim()}");
 
-    // 3️⃣ Save user to Firestore
-    await _firestore.collection('users').doc(user.uid).set(userData);
-
-    // 4️⃣ ✅ Create placeholder document based on role
-    if (selectedRole == 'lawyer') {
-      final lawyerId = userData['lawyerId'] as String?;
-      await _firestore.collection('lawyers').doc(lawyerId).set({
-        'userId': user.uid,
-        'isVerified': false,
-        'verificationStatus': 'not_submitted',
+      final userData = {
+        'userId': userId,
+        'name': widget.signupData.name.trim(),
+        'email': widget.signupData.email.trim(),
+        'phone': _phoneController.text.trim(),
+        'password': widget.signupData.password, // ✅ ADDED: Save password for Firestore login
+        'role': selectedRole,
+        'lawyerId': selectedRole == 'lawyer' ? 'LAW${userId.substring(3, 9)}' : null,
+        'judgeId': selectedRole == 'judge' ? 'JDG${userId.substring(3, 9)}' : null,
         'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
 
-      debugPrint('📄 Placeholder lawyer doc created for $lawyerId');
-    } else if (selectedRole == 'judge') {
-      final judgeId = userData['judgeId'] as String?;
-      await _firestore.collection('judges').doc(judgeId).set({
-        'userId': user.uid,
-        'isVerified': false,
-        'verificationStatus': 'not_submitted',
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      // ✅ Save user to Firestore 'users' collection with error handling
+      try {
+        await _firestore.collection('users').doc(firebaseUser.uid).set(
+          userData,
+          SetOptions(merge: true),
+        );
+        debugPrint('✅ User saved to Firestore: ${firebaseUser.uid}');
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          throw Exception('Permission denied. Please check Firestore security rules.');
+        } else {
+          rethrow;
+        }
+      }
 
-      debugPrint('📄 Placeholder judge doc created for $judgeId');
+      // Create role-specific document
+      if (selectedRole == 'lawyer') {
+        final lawyerId = userData['lawyerId'] as String?;
+        if (lawyerId != null) {
+          try {
+            await _firestore.collection('lawyers').doc(lawyerId).set({
+              'userId': firebaseUser.uid,
+              'name': widget.signupData.name.trim(),
+              'email': widget.signupData.email.trim(),
+              'phone': _phoneController.text.trim(),
+              'isVerified': false,
+              'verificationStatus': 'not_submitted',
+              'createdAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            debugPrint('📄 Lawyer doc created: $lawyerId');
+          } on FirebaseException catch (e) {
+            debugPrint('⚠️ Error creating lawyer doc: $e');
+            // Continue even if lawyer doc creation fails
+          }
+        }
+      } else if (selectedRole == 'judge') {
+        final judgeId = userData['judgeId'] as String?;
+        if (judgeId != null) {
+          try {
+            await _firestore.collection('judges').doc(judgeId).set({
+              'userId': firebaseUser.uid,
+              'name': widget.signupData.name.trim(),
+              'email': widget.signupData.email.trim(),
+              'phone': _phoneController.text.trim(),
+              'isVerified': false,
+              'verificationStatus': 'not_submitted',
+              'createdAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            debugPrint('📄 Judge doc created: $judgeId');
+          } on FirebaseException catch (e) {
+            debugPrint('⚠️ Error creating judge doc: $e');
+            // Continue even if judge doc creation fails
+          }
+        }
+      }
+
+      // Verify the data was saved
+      final check = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      debugPrint("🔥 Firestore saved data: ${check.data()}");
+
+      // Navigate to home
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const RootPage()),
+          (route) => false,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Authentication failed.';
+      if (e.code == 'email-already-in-use') {
+        message = 'This email is already registered. Please login instead.';
+      } else if (e.code == 'weak-password') {
+        message = 'Please use a stronger password.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email format.';
+      } else {
+        message = e.message ?? message;
+      }
+      
+      if (mounted) {
+        setState(() => isLoading = false);
+        _showError(message);
+      }
+    } on FirebaseException catch (e) {
+      // ✅ Handle Firestore permission errors
+      String message = 'Database error occurred.';
+      if (e.code == 'permission-denied') {
+        message = 'Permission denied. Please check your Firestore security rules.';
+      } else if (e.code == 'unavailable') {
+        message = 'Service temporarily unavailable. Please try again.';
+      } else {
+        message = e.message ?? message;
+      }
+      
+      debugPrint('❌ Firestore error: ${e.code} - ${e.message}');
+      if (mounted) {
+        setState(() => isLoading = false);
+        _showError(message);
+      }
+    } catch (e) {
+      debugPrint('❌ Error saving user: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+        _showError("Unable to save user to Firebase: $e");
+      }
     }
-
-    // 5️⃣ Debug check
-    final check = await _firestore.collection('users').doc(user.uid).get();
-    debugPrint("🔥 Firestore saved data: ${check.data()}");
-
-    // 6️⃣ Navigate
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const RootPage()),
-        (route) => false,
-      );
-    }
-  } on FirebaseAuthException catch (e) {
-    String message = 'Authentication failed.';
-    if (e.code == 'email-already-in-use') {
-      message = 'This email is already registered.';
-    } else if (e.code == 'weak-password') {
-      message = 'Please use a stronger password.';
-    } else if (e.code == 'invalid-email') {
-      message = 'Invalid email format.';
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error saving user: $e")),
-    );
-  } finally {
-    if (mounted) setState(() => isLoading = false);
   }
-}
 
-
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -239,35 +417,33 @@ class _VerificationPageState extends State<VerificationPage>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-
-      body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                // Top segment: Lottie animation (remains static)
-                SizedBox(
-                  height: 250,
-                  child: Lottie.asset(
-                    'assets/verification.json',
-                    repeat: true, // loops indefinitely
-                    fit: BoxFit.contain,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 250,
+                    child: Lottie.asset(
+                      'assets/verification.json',
+                      repeat: true,
+                      fit: BoxFit.contain,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-
-                // Bottom segment: phone input / OTP card
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  child: otpSent
-                      ? FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: _buildOTPCard(defaultPinTheme),
-                        )
-                      : _buildPhoneCard(),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    child: otpSent
+                        ? FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: _buildOTPCard(defaultPinTheme),
+                          )
+                        : _buildPhoneCard(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -275,7 +451,6 @@ class _VerificationPageState extends State<VerificationPage>
     );
   }
 
-  // New Phone input UI
   Widget _buildPhoneCard() {
     return Center(
       child: Card(
@@ -298,7 +473,6 @@ class _VerificationPageState extends State<VerificationPage>
                 ),
               ),
               const SizedBox(height: 8),
-
               const Text(
                 "Verify your account to continue!",
                 style: TextStyle(
@@ -308,37 +482,34 @@ class _VerificationPageState extends State<VerificationPage>
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-
               Row(
                 children: [
-                  // +91 prefix segment
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.grey[300], // slightly grey background
-                      
+                      color: Colors.grey[300],
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        bottomLeft: Radius.circular(4),
+                      ),
                     ),
                     child: const Text(
                       '+91',
                       style: TextStyle(
-                        color: Colors.black54, // dark grey text
+                        color: Colors.black54,
                         fontWeight: FontWeight.w500,
                         fontSize: 12,
                       ),
                     ),
                   ),
-
-                  
-
-                  // Phone number input
                   Expanded(
                     child: TextField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      style: const TextStyle(color: Colors.black, fontSize: 12),
+                      style: const TextStyle(color: Colors.black, fontSize: 18),
                       decoration: const InputDecoration(
                         hintText: 'Enter mobile number*',
                         border: InputBorder.none,
@@ -348,7 +519,6 @@ class _VerificationPageState extends State<VerificationPage>
                   ),
                 ],
               ),
-
               if (phoneError != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4.0),
@@ -357,10 +527,7 @@ class _VerificationPageState extends State<VerificationPage>
                     style: const TextStyle(fontSize: 11, color: Colors.red),
                   ),
                 ),
-
               const SizedBox(height: 24),
-
-              // Send OTP button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -383,12 +550,17 @@ class _VerificationPageState extends State<VerificationPage>
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text(
                           "Send",
-                          style: TextStyle(
-                            color: Colors.white,
-                          ), // <-- set text color here
+                          style: TextStyle(color: Colors.white),
                         ),
                 ),
               ),
@@ -399,7 +571,6 @@ class _VerificationPageState extends State<VerificationPage>
     );
   }
 
-  // New OTP input UI
   Widget _buildOTPCard(PinTheme defaultPinTheme) {
     return Center(
       child: Card(
@@ -422,20 +593,17 @@ class _VerificationPageState extends State<VerificationPage>
                 ),
               ),
               const SizedBox(height: 8),
-
               Text(
-                "We have sent the OTP on ${_phoneController.text}, it will auto-fill the fields.",
+                "We have sent the OTP on +91${_phoneController.text}, it will auto-fill the fields.",
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-
-              // OTP input
               Pinput(
                 controller: _otpController,
                 length: 6,
                 onCompleted: (pin) {
-                  verifyOTP(); // automatically verifies once 6 digits are entered
+                  verifyOTP();
                 },
                 defaultPinTheme: defaultPinTheme,
                 focusedPinTheme: defaultPinTheme.copyWith(
@@ -445,7 +613,6 @@ class _VerificationPageState extends State<VerificationPage>
                   ),
                 ),
               ),
-
               if (otpError != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4.0),
@@ -454,9 +621,7 @@ class _VerificationPageState extends State<VerificationPage>
                     style: const TextStyle(fontSize: 11, color: Colors.red),
                   ),
                 ),
-
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -479,13 +644,21 @@ class _VerificationPageState extends State<VerificationPage>
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Verify",style: TextStyle(
-                        color: Colors.white,
-                      )),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "Verify",
+                          style: TextStyle(color: Colors.white),
+                        ),
                 ),
               ),
-
+              const SizedBox(height: 12),
               TextButton(
                 onPressed: (isLoading || !canResend)
                     ? null
@@ -493,9 +666,14 @@ class _VerificationPageState extends State<VerificationPage>
                         sendOTP(_phoneController.text.trim());
                         startResendTimer();
                       },
-                child: canResend
-                    ? const Text("Resend")
-                    : Text("Resend in $resendSeconds s"),
+                child: Text(
+                  canResend ? "Resend" : "Resend in $resendSeconds s",
+                  style: TextStyle(
+                    color: (isLoading || !canResend)
+                        ? Colors.grey
+                        : const Color(0xFF004AAD),
+                  ),
+                ),
               ),
             ],
           ),

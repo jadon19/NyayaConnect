@@ -15,10 +15,12 @@ class FirebaseService {
     return 0;
   }
 
-  Future<void> updateUserScore(int score) async {
+  Future<void> updateUserScore(int coinsToAdd) async {
     await _firestore.collection('users').doc(userId).set(
-      {'learningScore': score},
-      SetOptions(merge: true), // merge avoids overwriting other fields
+      {
+        'learningScore': FieldValue.increment(coinsToAdd),
+      },
+      SetOptions(merge: true),
     );
   }
 }
