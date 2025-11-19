@@ -1085,34 +1085,19 @@ void toggleJudge(bool? value) {
                           return; // stop here, just expand the UI
                         }
                         if (!validateSignup()) return;
-                        final query = await FirebaseFirestore.instance
-                            .collection('users')
-                            .where('email', isEqualTo: signupEmail.text.trim())
-                            .get();
-
-                        if (query.docs.isNotEmpty) {
-                          // 2️⃣ Show snackbar if email already exists
-                          _showErrorSnack(
-                            'User with this email already exists. Please login.',
-                          );
-                          return; // stop signup
-                        }
-
-                        // optional if you want reveal animation for signup
+          // optional if you want reveal animation for signup
                         setState(() {}); // Ensure layout is done
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           triggerReveal(
                             isSignup: true,
                             onComplete: () {
                               // ✅ Determine actual user role from checkboxes
-                              UserRole finalRole;
-                              if (isLawyer) {
-                                finalRole = UserRole.lawyer;
-                              } else if (isJudge) {
-                                finalRole = UserRole.judge;
-                              } else {
-                                finalRole = UserRole.client;
-                              }
+                              final UserRole finalRole = isLawyer
+                                  ? UserRole.lawyer
+                                  : isJudge
+                                  ? UserRole.judge
+                                  : UserRole.client;
+
 
                               // ✅ Debug print for confirmation
                               debugPrint("🧾 Selected Role before verification: $finalRole");
@@ -1124,6 +1109,7 @@ void toggleJudge(bool? value) {
                                 password: signupPassword.text.trim(),
                                 role: finalRole,
                               );
+
 
                               // ✅ Navigate to verification page
                               Navigator.pushReplacement(

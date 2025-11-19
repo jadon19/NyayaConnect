@@ -2,29 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:nyaya_connect/pages/ai_doubt_forum.dart';
-
 import 'pages/splash.dart';
 import 'pages/advocate/homescreen.dart';
 import 'pages/users/homescreen.dart';
 import 'pages/judge/homescreen.dart';
-
+import 'pages/ai_doubt_forum.dart';
+import 'pages/contact_ngo_page.dart';
+import 'pages/users/learning/learning_main.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // ✅ Initialize Firebase and load .env *in parallel*
-    await Future.wait([
-      Firebase.initializeApp(),
-      dotenv.load(fileName: ".env"),
-    ]);
-
-    debugPrint('✅ Firebase initialized and .env loaded successfully');
-    debugPrint("✅ OpenAI Key: ${dotenv.env['OPENAI_API_KEY']}");
-    debugPrint("✅ Indian Kanoon Key: ${dotenv.env['INDIAN_KANOON_API_KEY']}");
+    // ✅ Only Firebase initialization (no .env)
+    await Firebase.initializeApp();
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
-    debugPrint('Initialization error: $e');
+    debugPrint(' Firebase initialization error: $e');
   }
 
   runApp(const MyApp());
@@ -46,7 +39,10 @@ class MyApp extends StatelessWidget {
       ),
       home: const RootPage(),
       routes: {
-        '/aiDoubt': (context) => const AIDoubtForumPage(),
+        '/contactNgo': (_) => const ContactNgoPage(),
+        '/mylearning': (_) => const LearningMainPage(),
+        '/aiDoubt':(_)=> const AIDoubtForumPage()
+        // keep any other named routes you already use here
       },
     );
   }

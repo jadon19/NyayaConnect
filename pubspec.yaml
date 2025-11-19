@@ -17,7 +17,7 @@ dependencies:
   cloud_firestore: ^6.0.1
   firebase_storage: ^13.0.3
   firebase_analytics: ^12.0.2
-
+  url_launcher: ^6.3.2
   # ✅ UI and Utilities
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.3
@@ -63,4 +63,4 @@ flutter:
     #- assets/blank_profile.png
     #- assets/learning_placeholder.png
     #- assets/profile_icon.riv
-    - .env   # ✅ Make sure .env is included as an asset
+    # ✅ Make sure .env is included as an asset
