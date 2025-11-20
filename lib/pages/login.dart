@@ -1087,8 +1087,8 @@ void toggleJudge(bool? value) {
                         }
                         if (!validateSignup()) return;
 
-
                         // optional if you want reveal animation for signup
+
                         setState(() {}); // Ensure layout is done
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           triggerReveal(
@@ -1112,6 +1112,7 @@ void toggleJudge(bool? value) {
                                 password: signupPassword.text.trim(),
                                 role: finalRole,
                               );
+
 
                               // ✅ Navigate to verification page
                               Navigator.pushReplacement(
