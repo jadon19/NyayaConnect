@@ -6,9 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/testimonial_card.dart';
 import '../notification_screen.dart';
-import 'learning_main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'consult_lawyer.dart';
 import 'document_review.dart';
 import 'meetings.dart';
@@ -16,13 +14,11 @@ import 'documents/case_files.dart';
 import 'documents/consultation_summaries.dart';
 import 'documents/court_orders.dart';
 import 'documents/legal_templates.dart';
-import 'documents/supporting_documents.dart';
 import 'sidebar_menu/call_logs.dart';
 import 'sidebar_menu/transactions.dart';
-import 'sidebar_menu/cases.dart';
-import 'sidebar_menu/track_case.dart';
+
 import 'sidebar_menu/profile.dart';
-import 'sidebar_menu/documents.dart';
+
 import 'sidebar_menu/feedback.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -187,23 +183,14 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   Widget _buildSidebar() {
     final menuItems = [
       {'icon': Icons.person, 'label': 'Profile', 'page': ProfileScreen()},
-      {
-        'icon': Icons.folder,
-        'label': 'My Documents',
-        'page': MyDocumentsScreen(),
-      },
+      
       {'icon': Icons.call, 'label': 'Call Logs', 'page': CallLogsScreen()},
       {
         'icon': Icons.payment,
         'label': 'Transactions',
         'page': TransactionsScreen(),
       },
-      {'icon': Icons.work, 'label': 'My Cases', 'page': MyCasesScreen()},
-      {
-        'icon': Icons.location_on,
-        'label': 'Track Case',
-        'page': TrackCaseScreen(),
-      },
+      
       {
         'icon': Icons.share,
         'label': 'Share',
@@ -387,57 +374,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
     );
   }
 
-  // Pro Bono cards with icons
-  Widget _buildProBonoSection() {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('pro_bono_opportunities')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final data = snapshot.data!.docs;
-        return Column(
-          children: data.map((doc) {
-            final d = doc.data();
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.lightBlue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.shade100,
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: ListTile(
-                  leading: const Icon(
-                    Icons.volunteer_activism,
-                    color: Colors.green,
-                    size: 30,
-                  ),
-                  title: Text(
-                    d['title'] ?? 'Pro Bono Opportunity',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    d['description'] ?? '',
-                    style: const TextStyle(color: Colors.black87),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
+  
   // Reuse Legend Card for E-Court and AI Forum
   Widget _buildLegendCard({
     required String title,
@@ -603,11 +540,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
         'page': const LegalTemplatesPage(),
         'icon': Icons.description,
       },
-      {
-        'title': 'Supporting Documents',
-        'page': const SupportingDocumentsPage(),
-        'icon': Icons.attach_file,
-      },
     ];
 
     return SizedBox(
@@ -663,47 +595,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   }
 
   // Restored My Learning section that links to Learning screen
-  Widget _buildMyLearningSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader("My Learning"),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MyLearningPage()),
-              );
-            },
-            child: Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
-                image: const DecorationImage(
-                  image: AssetImage('assets/learning_placeholder.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: const Center(
-                child: Text(
-                  "Learning Points",
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   Widget _buildSectionHeader(String title) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -774,10 +666,25 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                     icon: Icons.smart_toy_outlined,
                   ),
 
-                  const SizedBox(height: 12),
-
+                  const SizedBox(height: 20),
+                 _buildLegendCard(
+                    title: "Contact NGO",
+                    description:
+                        "Reach out to registered NGOs for free legal assistance and support.",
+                    buttonText: "Contact Now",
+                    onTap: () => Navigator.pushNamed(context, '/contactNgo'),
+                    icon: Icons.handshake_outlined,
+                  ),
+                  const SizedBox(height: 25),
                   // 🔹 My Learning Section
-                  _buildMyLearningSection(),
+                  _buildLegendCard(
+                    title: "My learning",
+                    description:
+                        "Your Path to Legal Knowledge Starts Here.Master Legal Basics, Anytime, Anywhere.",
+                    buttonText: "Start Learning",
+                    onTap: () => Navigator.pushNamed(context, '/mylearning'),
+                    icon: Icons.lightbulb_outline,
+                  ),
 
                   const SizedBox(height: 25),
 

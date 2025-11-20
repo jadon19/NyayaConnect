@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'learning/firebase_service.dart';
-import 'learning/case_data.dart';
-import 'learning/case_detail_page.dart';
+import 'firebase_service.dart';
+import 'case_data.dart';
+import 'case_detail_page.dart';
 
 class LearningMainPage extends StatefulWidget {
   const LearningMainPage({super.key});
