@@ -21,6 +21,7 @@ import 'sidebar_menu/profile.dart';
 
 import 'sidebar_menu/feedback.dart';
 import 'package:share_plus/share_plus.dart';
+import 'community.dart';
 
 class HomeScreenUser extends StatefulWidget {
   final String userName;
@@ -99,6 +100,11 @@ class _HomeScreenUserState extends State<HomeScreenUser>
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+      );
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CommunityScreen()),
       );
     }
   }
@@ -279,21 +285,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: ElevatedButton.icon(
-                  onPressed: _logout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    minimumSize: const Size.fromHeight(44),
-                  ),
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                  label: const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
+
             ],
           ),
         ),
