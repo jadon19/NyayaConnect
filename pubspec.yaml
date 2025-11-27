@@ -30,6 +30,7 @@ dependencies:
   pinput: ^5.0.1
   image_picker: ^1.2.0
   share_plus: ^12.0.0
+  intl: ^0.20.0
   # ✅ Auth integrations
   google_sign_in: ^6.3.0
 
