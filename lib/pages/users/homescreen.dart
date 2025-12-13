@@ -1,27 +1,26 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:nyaya_connect/main.dart';
+import 'package:nyaya_connect/main.dart' show RootPage;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/testimonial_card.dart';
-import '../notification_screen.dart';
+import 'features/notifications_screen_user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'consult_lawyer.dart';
-import 'document_review.dart';
-import 'meetings.dart';
-import 'documents/case_files.dart';
-import 'documents/consultation_summaries.dart';
-import 'documents/court_orders.dart';
-import 'documents/legal_templates.dart';
-import 'sidebar_menu/call_logs.dart';
-import 'sidebar_menu/transactions.dart';
-
-import 'sidebar_menu/profile.dart';
-
-import 'sidebar_menu/feedback.dart';
+import 'book_lawyer/consult_lawyer_page.dart';
+import 'features/document_review.dart';
+import '../calls/meeting_page.dart';
+import '../documents/case_files.dart';
+import '../documents/consultation_summaries.dart';
+import '../documents/court_orders.dart';
+import '../documents/legal_templates.dart';
+import '../sidebar_menu/call_logs.dart';
+import '../sidebar_menu/transactions.dart';
+import '../ai_doubt_forum.dart';
+import 'profile.dart';
+import '../sidebar_menu/feedback.dart';
 import 'package:share_plus/share_plus.dart';
-import 'community.dart';
+import '../community/community.dart';
 
 class HomeScreenUser extends StatefulWidget {
   final String userName;
@@ -63,11 +62,20 @@ class _HomeScreenUserState extends State<HomeScreenUser>
     try {
       await FirebaseAuth.instance.signOut();
       final prefs = await SharedPreferences.getInstance();
+
+      // 🔥 Preserve onboarding status
+      bool isFirstLaunch = prefs.getBool('isFirstLaunch') ?? false;
+
       await prefs.clear();
+
+      // 🔥 Restore onboarding flag
+      prefs.setBool('isFirstLaunch', isFirstLaunch);
+
       if (!mounted) return;
+
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MyApp()),
+        MaterialPageRoute(builder: (_) => const RootPage()),
         (route) => false,
       );
     } catch (e) {
@@ -95,18 +103,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
 
   void _onNavBarTap(int index) {
     setState(() => _currentIndex = index);
-    HapticFeedback.lightImpact();
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-      );
-    } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CommunityScreen()),
-      );
-    }
   }
 
   @override
@@ -126,7 +122,15 @@ class _HomeScreenUserState extends State<HomeScreenUser>
       ),
       body: Stack(
         children: [
-          _buildMainContent(),
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              _buildMainContent(), // Home page stays same
+              UserNotificationsScreen(), // Alerts page
+              const CommunityScreen(), // Community
+              const AIDoubtForumPage(), // Learn
+            ],
+          ),
 
           /// Blur overlay
           AnimatedBuilder(
@@ -172,12 +176,17 @@ class _HomeScreenUserState extends State<HomeScreenUser>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFFE53E3E),
-        onPressed: _showEmergencyDialog,
-        icon: const Icon(Icons.support_agent, color: Colors.white),
-        label: const Text('Emergency Help'),
-      ),
+      floatingActionButton:
+          _currentIndex ==
+              2 // 2 = Community tab
+          ? null // Hide FAB on this tab
+          : FloatingActionButton.extended(
+              backgroundColor: const Color(0xFFE53E3E),
+              onPressed: _showEmergencyDialog,
+              icon: const Icon(Icons.support_agent, color: Colors.white),
+              label: const Text('Emergency Help'),
+            ),
+
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentIndex,
         onTap: _onNavBarTap,
@@ -189,14 +198,14 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   Widget _buildSidebar() {
     final menuItems = [
       {'icon': Icons.person, 'label': 'Profile', 'page': ProfileScreen()},
-      
+
       {'icon': Icons.call, 'label': 'Call Logs', 'page': CallLogsScreen()},
       {
         'icon': Icons.payment,
         'label': 'Transactions',
         'page': TransactionsScreen(),
       },
-      
+
       {
         'icon': Icons.share,
         'label': 'Share',
@@ -285,7 +294,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   ),
                 ),
               ),
-
             ],
           ),
         ),
@@ -309,7 +317,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
       {
         'title': 'Meeting Scheduled',
         'icon': Icons.calendar_today,
-        'page': const MeetingScheduledPage(),
+        'page': MeetingsScreen(),
       },
     ];
 
@@ -366,7 +374,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
     );
   }
 
-  
   // Reuse Legend Card for E-Court and AI Forum
   Widget _buildLegendCard({
     required String title,
@@ -587,7 +594,6 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   }
 
   // Restored My Learning section that links to Learning screen
-  
 
   Widget _buildSectionHeader(String title) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -659,13 +665,22 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   ),
 
                   const SizedBox(height: 20),
-                 _buildLegendCard(
+                  _buildLegendCard(
                     title: "Contact NGO",
                     description:
                         "Reach out to registered NGOs for free legal assistance and support.",
                     buttonText: "Contact Now",
                     onTap: () => Navigator.pushNamed(context, '/contactNgo'),
                     icon: Icons.handshake_outlined,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildLegendCard(
+                    title: "Find Probono Lawyer",
+                    description:
+                        "Because justice should never depend on your income—get the legal support you deserve at no cost.",
+                    buttonText: "Contact Now",
+                    onTap: () => Navigator.pushNamed(context, '/probono'),
+                    icon: Icons.contact_page_outlined,
                   ),
                   const SizedBox(height: 25),
                   // 🔹 My Learning Section

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/simple_gradient_header.dart';
 
 class ContactNgoPage extends StatelessWidget {
   const ContactNgoPage({super.key});
@@ -13,7 +14,7 @@ class ContactNgoPage extends StatelessWidget {
         'phone': '+91 98765 43210',
         'email': 'help@nyayaseva.org',
         'website': 'https://nyayaseva.org',
-        'address': 'C-102, Defence Colony, New Delhi'
+        'address': 'C-102, Defence Colony, New Delhi',
       },
       {
         'name': 'Justice For All Trust',
@@ -21,7 +22,7 @@ class ContactNgoPage extends StatelessWidget {
         'phone': '+91 90123 45678',
         'email': 'support@justiceforall.in',
         'website': 'https://justiceforall.in',
-        'address': '14/2, Meera Marg, Mumbai'
+        'address': '14/2, Meera Marg, Mumbai',
       },
       {
         'name': 'Sahyog Legal Aid',
@@ -29,23 +30,29 @@ class ContactNgoPage extends StatelessWidget {
         'phone': '+91 98111 22334',
         'email': 'contact@sahyog.org',
         'website': 'https://sahyog.org',
-        'address': 'Plot 7, Sector 62, Noida'
+        'address': 'Plot 7, Sector 62, Noida',
       },
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contact NGOs'),
-        backgroundColor: const Color(0xFF42A5F5),
-        foregroundColor: Colors.white,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: ngos.length,
-        itemBuilder: (context, index) {
-          final ngo = ngos[index];
-          return _NgoCard(ngo: ngo);
-        },
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          // 🔵 Gradient header
+          const SimpleGradientHeader(title: "Contact NGOs"),
+
+          // 🔵 NGO List
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: ngos.length,
+              itemBuilder: (context, index) {
+                final ngo = ngos[index];
+                return _NgoCard(ngo: ngo);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -58,9 +65,12 @@ class _NgoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  margin: const EdgeInsets.only(bottom: 16),
+  elevation: 6, // stronger shadow
+  color: Colors.white, // ensure white background
+  shadowColor: Colors.black26,
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -68,16 +78,10 @@ class _NgoCard extends StatelessWidget {
           children: [
             Text(
               ngo['name']!,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text(
-              ngo['focus']!,
-              style: const TextStyle(color: Colors.black54),
-            ),
+            Text(ngo['focus']!, style: const TextStyle(color: Colors.black54)),
             const Divider(height: 24),
             _InfoRow(
               icon: Icons.phone,
@@ -94,21 +98,25 @@ class _NgoCard extends StatelessWidget {
               label: ngo['website']!,
               onTap: () => launchUrl(Uri.parse(ngo['website']!)),
             ),
-            _InfoRow(
-              icon: Icons.location_on_outlined,
-              label: ngo['address']!,
-            ),
+            _InfoRow(icon: Icons.location_on_outlined, label: ngo['address']!),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF42A5F5),
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(
+                  0xFF004AAD,
+                ), // text + icon color (dark blue)
                 minimumSize: const Size.fromHeight(42),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
+                  side: const BorderSide(color: Color(0xFF42A5F5), width: 1.4),
                 ),
               ),
               icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('Request Assistance'),
+              label: const Text(
+                'Request Assistance',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               onPressed: () => _showRequestSheet(context, ngo),
             ),
           ],
@@ -125,7 +133,7 @@ class _NgoCard extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 50),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -143,6 +151,7 @@ class _NgoCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 18),
@@ -163,11 +172,13 @@ class _NgoCard extends StatelessWidget {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Request submitted. NGO will contact you soon.'),
+                    content: Text(
+                      'Request submitted. NGO will contact you soon.',
+                    ),
                   ),
                 );
               },
-              child: const Text('Submit'),
+              child: const Text('Submit',style: TextStyle(color: Colors.white),),
             ),
           ],
         ),

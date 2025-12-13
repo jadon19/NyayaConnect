@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:nyaya_connect/pages/login.dart';
+import 'package:nyaya_connect/pages/signup/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:rive/rive.dart' as rive;
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/testimonial_card.dart';
-import '../notification_screen.dart';
+import 'features/notifications_screen_advocate.dart';
 import 'verify_advocate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'sidebar_menu/profile.dart';
+import 'profile.dart';
+import '../sidebar_menu/track_case.dart';
+import '../sidebar_menu/transactions.dart';
+import '../sidebar_menu/call_logs.dart';
+import '../sidebar_menu/feedback.dart';
+import 'package:share_plus/share_plus.dart';
+import '../documents/case_files.dart';
+import '../documents/consultation_summaries.dart';
+import '../documents/court_orders.dart';
+import '../documents/legal_templates.dart';
+import '../community/community.dart';
+import '../ai_doubt_forum.dart';
+import '../../services/user_manager.dart';
 class HomeScreenLawyer extends StatefulWidget {
   final String userName;
 
@@ -34,7 +45,6 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
   late Animation<double> _cardAnimation;
 
   String _verificationStatus = "not_submitted";
-
   @override
   void initState() {
     super.initState();
@@ -70,21 +80,49 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
     _cardController.dispose();
     super.dispose();
   }
+Future<void> _checkVerificationStatus() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-  Future<void> _checkVerificationStatus() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  // STEP 1 — Read lawyerId (from UserManager or Firestore)
+  String? lawyerId = UserManager().lawyerId;
 
-    final doc =
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    if (!doc.exists) return;
+  if (lawyerId == null || lawyerId.trim().isEmpty) {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
-    final status = doc['verificationStatus'] ?? 'not_submitted';
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('verification_status', status);
-
-    setState(() => _verificationStatus = status);
+    lawyerId = userDoc.data()?['lawyerId'];
   }
+
+  // No lawyerId: not submitted
+  if (lawyerId == null || lawyerId.trim().isEmpty) {
+    setState(() => _verificationStatus = "not_submitted");
+    return;
+  }
+
+  // STEP 2 — Fetch correct lawyer document using lawyerId
+  final lawyerDoc = await FirebaseFirestore.instance
+      .collection('lawyers')
+      .doc(lawyerId)
+      .get();
+
+  if (!lawyerDoc.exists) {
+    setState(() => _verificationStatus = "not_submitted");
+    return;
+  }
+
+  final status = lawyerDoc.data()?['verificationStatus'] ?? "not_submitted";
+
+  // Save locally
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('verification_status', status);
+
+  // Update UI
+  setState(() => _verificationStatus = status);
+}
+
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -97,7 +135,6 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
   }
 
   void _toggleSidebar() {
-    print("Sidebar toggle called, open = $_isSidebarOpen");
     setState(() {
       if (_isSidebarOpen) {
         _sidebarController.reverse();
@@ -111,16 +148,10 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
   }
 
   void _onNavBarTap(int index) {
-    setState(() => _currentIndex = index);
-    HapticFeedback.lightImpact();
+  setState(() => _currentIndex = index);
+}
 
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-      );
-    }
-  }
+  
 
   void _navigateToVerification() {
     Navigator.push(
@@ -133,19 +164,9 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome, ${widget.userName}'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black87,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF81D4FA), Color(0xFFE3F2FD)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+        title: Text('Welcome, ${widget.userName}',style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF42A5F5),
+        
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -157,8 +178,15 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
       // ✅ FIXED STACK ORDER
       body: Stack(
         children: [
-          // Main content
-          _buildMainContent(),
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              _buildMainContent(), // Home page stays same
+              LawyerNotificationsScreen(), // Alerts page
+              const CommunityScreen(), // Community
+              const AIDoubtForumPage(), // Learn
+            ],
+          ),
 
           // Dim overlay
           if (_isSidebarOpen)
@@ -183,7 +211,9 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
         ],
       ),
 
-      floatingActionButton: ScaleTransition(
+      floatingActionButton:  _currentIndex == 2
+    ? null
+    :ScaleTransition(
         scale: _fabAnimation,
         child: FloatingActionButton.extended(
           backgroundColor: const Color(0xFFE53E3E),
@@ -218,6 +248,8 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
                 _buildSectionHeader("Quick Actions"),
                 _buildQuickActions(),
                 const SizedBox(height: 25),
+                _buildDocuments(),
+                const SizedBox(height: 25),
                 _buildSectionHeader("Services"),
                 const SizedBox(height: 12),
                 _buildServiceCard(
@@ -237,7 +269,35 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
                   primaryText: "Ask AI Agent",
                   onPrimary: () => Navigator.pushNamed(context, '/aiDoubt'),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 16),
+                  _buildServiceCard(
+                    title: "Join NGO",
+                    subtitle:
+                        "Reach out to registered NGOs for Collaboration. Explore and get Hands-on-experience.",
+                    primaryText: "Contact Now",
+                    onPrimary: () => Navigator.pushNamed(context, '/contactNgo'),
+                    icon: Icons.handshake_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildServiceCard(
+                    title: "Probono Opportunities",
+                    subtitle:
+                        "Use your legal expertise to uplift lives, empower communities, and deliver justice where it is needed most.",
+                    primaryText: "Search Now",
+                    onPrimary: () => Navigator.pushNamed(context, '/probono'),
+                    icon: Icons.contact_page_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  // 🔹 My Learning Section
+                  _buildServiceCard(
+                    title: "My learning",
+                    subtitle:
+                        "Your Path to Legal Knowledge Starts Here.Master Legal Basics, Anytime, Anywhere.",
+                    primaryText: "Start Learning",
+                    onPrimary: () => Navigator.pushNamed(context, '/mylearning'),
+                    icon: Icons.lightbulb_outline,
+                  ),
+                const SizedBox(height: 20),
                 _buildSectionHeader("Recent Activity"),
                 _buildRecentActivity(),
                 const SizedBox(height: 25),
@@ -259,9 +319,9 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
       margin: const EdgeInsets.only(bottom: 8),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF81D4FA), Color(0xFFE3F2FD)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [Color(0xFF42A5F5),  Color(0xFF90CAF9)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(40),
@@ -273,14 +333,12 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
           GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: _toggleSidebar,
-            child: SizedBox(
-              width: 65,
-              height: 65,
-              child: rive.RiveAnimation.asset(
-                'assets/profile_icon.riv',
-                fit: BoxFit.cover,
-              ),
-            ),
+            child: const CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, color: Color(0xFF42A5F5), size: 28),
+          ),
+            
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -290,7 +348,7 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
                 Text("Good ${_getGreeting()}, ${widget.userName}",
                     style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.black87,
+                        color: Colors.white,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
                 if (_verificationStatus == "not_submitted")
@@ -321,15 +379,20 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
 
   Widget _buildSidebar() {
     final menuItems = [
-      {'icon': Icons.person, 'label': 'Profile', 'page': ProfileScreen()},
-      {'icon': Icons.description, 'label': 'My Documents', 'route': '/documents'},
-      {'icon': Icons.call, 'label': 'Call Logs', 'route': '/callLogs'},
-      {'icon': Icons.payment, 'label': 'Transactions', 'route': '/transactions'},
-      {'icon': Icons.folder_open, 'label': 'My Cases', 'route': '/myCases'},
-      {'icon': Icons.location_on, 'label': 'Track Case', 'route': '/trackCase'},
-      {'icon': Icons.support_agent, 'label': 'Support', 'route': '/support'},
-      {'icon': Icons.share, 'label': 'Share', 'route': '/share'},
-      {'icon': Icons.feedback, 'label': 'Feedback', 'route': '/feedback'},
+      {'icon': Icons.person, 'label': 'Profile', 'page': LawyerProfileScreen()},
+      {'icon': Icons.call, 'label': 'Call Logs', 'page': CallLogsScreen()},
+      {'icon': Icons.payment, 'label': 'Transactions', 'page': TransactionsScreen()},
+      {'icon': Icons.location_on, 'label': 'Track Case', 'page': TrackCaseScreen()},
+        {
+        'icon': Icons.share,
+        'label': 'Share',
+        'action': () async {
+          // Example using share_plus package
+          await Share.share(
+            'Check out this amazing app: https://play.google.com/store/apps/details?id=com.example.app',
+          );
+        },
+      },{'icon': Icons.feedback, 'label': 'Feedback', 'page': FeedbackScreen()},
     ];
 
     return Container(
@@ -421,18 +484,6 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: ElevatedButton.icon(
-              onPressed: _logout,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                minimumSize: const Size.fromHeight(44),
-              ),
-              icon: const Icon(Icons.logout, color: Colors.white),
-              label: const Text('Logout', style: TextStyle(color: Colors.white)),
-            ),
-          ),
         ],
       ),
     );
@@ -451,9 +502,8 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
   Widget _buildQuickActions() {
     final actions = [
       {'title': 'Meetings', 'route': '/meetings', 'icon': Icons.calendar_today},
-      {'title': 'My Cases', 'route': '/myCases', 'icon': Icons.folder_open},
       {'title': 'Clients', 'route': '/clients', 'icon': Icons.people},
-      {'title': 'Earnings', 'route': '/earnings', 'icon': Icons.attach_money},
+      {'title': 'Earnings', 'route': '/manager', 'icon': Icons.manage_accounts_sharp},
     ];
 
     return Padding(
@@ -490,6 +540,82 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
       ),
     );
   }
+  Widget _buildDocuments() {
+    final List<Map<String, dynamic>> docs = [
+      {
+        'title': 'Case files',
+        'page': const CaseFilesPage(),
+        'icon': Icons.folder_shared,
+      },
+      {
+        'title': 'Consultation Summaries',
+        'page': const ConsultationSummariesPage(),
+        'icon': Icons.article,
+      },
+      {
+        'title': 'Court Orders',
+        'page': const CourtOrdersPage(),
+        'icon': Icons.gavel,
+      },
+      {
+        'title': 'Legal Templates',
+        'page': const LegalTemplatesPage(),
+        'icon': Icons.description,
+      },
+    ];
+
+    return SizedBox(
+      height: 120,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: docs.map((d) {
+          return GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => d['page'] as Widget),
+            ),
+            child: Container(
+              width: 120,
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    d['icon'] as IconData,
+                    color: Colors.blue.shade700,
+                    size: 30,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    d['title']?.toString() ?? '',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
 
   Widget _buildServiceCard({
     required String title,
