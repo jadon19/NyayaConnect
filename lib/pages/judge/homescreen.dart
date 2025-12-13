@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:nyaya_connect/pages/login.dart';
+import 'package:nyaya_connect/pages/signup/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rive/rive.dart' as rive;
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/testimonial_card.dart';
-import '../notification_screen.dart';
+import '../users/features/notifications_screen_user.dart';
 import 'verify_judge.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -125,7 +125,7 @@ class _HomeAdvocateScreenState extends State<HomeScreenJudge>
     if (index == 1) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+        MaterialPageRoute(builder: (context) => UserNotificationsScreen()),
       );
     }
   }

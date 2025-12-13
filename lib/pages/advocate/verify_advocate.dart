@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Firebase authentication
 import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore database
 import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage
+import '../../services/user_manager.dart';
 
 class VerifyLawyerScreen extends StatefulWidget {
   const VerifyLawyerScreen({super.key});
@@ -15,7 +16,7 @@ class VerifyLawyerScreen extends StatefulWidget {
 class _VerifyLawyerScreenState extends State<VerifyLawyerScreen> {
   final _formKey = GlobalKey<FormState>();
   final _enrollmentController = TextEditingController();
-  
+
   String? _aadharFilePath;
   String? _enrollmentFilePath;
   bool _isSubmitting = false;
@@ -51,9 +52,9 @@ class _VerifyLawyerScreenState extends State<VerifyLawyerScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
     }
   }
 
@@ -64,59 +65,81 @@ class _VerifyLawyerScreenState extends State<VerifyLawyerScreen> {
       _enrollmentFileError = _enrollmentFilePath == null;
     });
   }
-Future<void> _submitVerification() async {
-  // Step 1️⃣ — Validate user input
+
+  Future<void> _submitVerification() async {
+  // Step 1 — Validate user input
   _validateForm();
   if (_enrollmentError || _aadharError || _enrollmentFileError) return;
 
   setState(() => _isSubmitting = true);
 
   try {
-    // Step 2️⃣ — Ensure user is logged in
+    // Step 2 — Ensure user is logged in
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User not logged in');
 
-    // Step 3️⃣ — Fetch lawyerId from `users` collection
-    final userDoc = await FirebaseFirestore.instance
+    final uid = user.uid;
+
+    // Step 3 — DEBUG BLOCK (now placed correctly)
+    final userDocSnap = await FirebaseFirestore.instance
         .collection('users')
-        .doc(user.uid)
+        .doc(uid)
         .get();
 
-    if (!userDoc.exists) throw Exception('User data not found');
-    final lawyerId = userDoc['lawyerId'];
-    if (lawyerId == null || lawyerId.isEmpty) {
-      throw Exception('Lawyer ID not found in user document');
+    final firestoreLawyerId = userDocSnap.data()?['lawyerId'];
+    String? lawyerId = UserManager().lawyerId;
+
+    debugPrint("AUTH UID: $uid");
+    debugPrint("Firestore lawyerId: $firestoreLawyerId");
+    debugPrint("UserManager lawyerId (initial): $lawyerId");
+
+    // Step 4 — Now resolve lawyerId properly
+    if (lawyerId == null || lawyerId.trim().isEmpty) {
+      lawyerId = firestoreLawyerId; // fallback from Firestore
+      UserManager().lawyerId = lawyerId;
+      debugPrint("UserManager lawyerId (reloaded): $lawyerId");
     }
 
-    // Step 4️⃣ — Upload files to Firebase Storage
-    final storageRef =
-        FirebaseStorage.instance.ref().child('lawyers/$lawyerId');
+    if (lawyerId == null || lawyerId.trim().isEmpty) {
+      throw Exception("Lawyer ID missing — cannot upload.");
+    }
+
+    lawyerId = lawyerId.trim();
+    debugPrint("FINAL lawyerId used for upload: $lawyerId");
+
+    // Step 5 — Upload files
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('lawyers/$lawyerId');
 
     String? aadharUrl;
     String? enrollmentUrl;
 
-    // Upload Aadhar card
     if (_aadharFilePath != null) {
       final aadharFile = File(_aadharFilePath!);
-      final aadharTask = await storageRef
-          .child('aadhar.${_aadharFilePath!.split('.').last}')
+      final ext = _aadharFilePath!.split('.').last;
+      debugPrint("Uploading Aadhar to path: lawyers/$lawyerId/aadhar.$ext");
+
+      final snapshot = await storageRef
+          .child('aadhar.$ext')
           .putFile(aadharFile);
-      aadharUrl = await aadharTask.ref.getDownloadURL();
+      aadharUrl = await snapshot.ref.getDownloadURL();
     }
 
-    // Upload Bar Council Enrollment certificate (scanned copy)
     if (_enrollmentFilePath != null) {
       final enrollmentFile = File(_enrollmentFilePath!);
-      final enrollmentTask = await storageRef
-          .child('enrollment_certificate.${_enrollmentFilePath!.split('.').last}')
+      final ext = _enrollmentFilePath!.split('.').last;
+      debugPrint("Uploading Enrollment Certificate to: lawyers/$lawyerId/enrollment_certificate.$ext");
+
+      final snapshot = await storageRef
+          .child('enrollment_certificate.$ext')
           .putFile(enrollmentFile);
-      enrollmentUrl = await enrollmentTask.ref.getDownloadURL();
+      enrollmentUrl = await snapshot.ref.getDownloadURL();
     }
 
-    // Step 5️⃣ — Create/Update lawyer document in Firestore
+    // Step 6 — Update Firestore
     await FirebaseFirestore.instance.collection('lawyers').doc(lawyerId).set({
-      'userId': user.uid,
-      'barEnrollmentNumber': _enrollmentController.text.trim(), // e.g. MAH/23/2015
+      'barEnrollmentNumber': _enrollmentController.text.trim(),
       'aadharFile': aadharUrl,
       'enrollmentFile': enrollmentUrl,
       'verificationStatus': 'pending',
@@ -124,29 +147,28 @@ Future<void> _submitVerification() async {
       'verificationSubmittedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    // Step 6️⃣ — Update user role & status in `users` collection
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-      'isLawyer': true,
-      'lawyerId': lawyerId,
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
       'verificationStatus': 'pending',
     });
 
-    // Step 7️⃣ — Final UI update
+    // Step 7 — UI
     setState(() {
       _isSubmitting = false;
       _isSubmitted = true;
     });
 
-    // Step 8️⃣ — Redirect user after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) Navigator.pop(context, true);
     });
 
   } catch (e) {
     setState(() => _isSubmitting = false);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('❌ Failed to submit verification: $e')),
     );
+
+    debugPrint("Submit verification FAILED: $e");
   }
 }
 
@@ -254,10 +276,16 @@ Future<void> _submitVerification() async {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _isSubmitting || _isSubmitted ? null : _submitVerification,
+                      onPressed: _isSubmitting || _isSubmitted
+                          ? null
+                          : _submitVerification,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isSubmitted ? Colors.white : Colors.green,
-                        foregroundColor: _isSubmitted ? Colors.green : Colors.white,
+                        backgroundColor: _isSubmitted
+                            ? Colors.white
+                            : Colors.green,
+                        foregroundColor: _isSubmitted
+                            ? Colors.green
+                            : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -269,7 +297,9 @@ Future<void> _submitVerification() async {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : Text(
@@ -290,7 +320,9 @@ Future<void> _submitVerification() async {
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.withOpacity(0.3)),
+                        border: Border.all(
+                          color: Colors.green.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -366,17 +398,17 @@ Future<void> _submitVerification() async {
                 width: 2,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
         if (error) ...[
           const SizedBox(height: 4),
           Text(
             errorText,
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.red, fontSize: 12),
           ),
         ],
       ],
@@ -428,10 +460,16 @@ Future<void> _submitVerification() async {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        filePath != null ? 'File selected' : 'Tap to upload file',
+                        filePath != null
+                            ? 'File selected'
+                            : 'Tap to upload file',
                         style: TextStyle(
-                          color: filePath != null ? Colors.green[700] : Colors.grey[600],
-                          fontWeight: filePath != null ? FontWeight.w600 : FontWeight.normal,
+                          color: filePath != null
+                              ? Colors.green[700]
+                              : Colors.grey[600],
+                          fontWeight: filePath != null
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                       if (filePath != null) ...[
@@ -462,10 +500,7 @@ Future<void> _submitVerification() async {
           const SizedBox(height: 4),
           Text(
             errorText,
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.red, fontSize: 12),
           ),
         ],
       ],
