@@ -16,6 +16,8 @@ import 'pages/calls/meeting_page.dart';
 import 'pages/documents/consultation_summaries.dart';
 import 'pages/advocate/features/manager.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:nyaya_connect/l10n/app_localizations.dart';
+import 'services/language_manager.dart';
 
 
 
@@ -69,19 +71,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Nyaya Connect',
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-      home: const RootPage(),
-      routes: {
-        '/contactNgo': (_) => const ContactNgoPage(),
-        '/mylearning': (_) => const LearningMainPage(),
-        '/aiDoubt': (_) => const AIDoubtForumPage(),
-        '/probono': (_) => const ProbonoPage(),
-        '/meetings': (_) => MeetingsScreen(),
-        '/clients': (_) => ConsultationSummariesPage(),
-        '/manager' :(_) => ManagerPage(),
+    return AnimatedBuilder(
+      animation: LanguageManager(),
+      builder: (context, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Nyaya Connect',
+          theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+          locale: LanguageManager().locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const RootPage(),
+          routes: {
+            '/contactNgo': (_) => const ContactNgoPage(),
+            '/mylearning': (_) => const LearningMainPage(),
+            '/aiDoubt': (_) => const AIDoubtForumPage(),
+            '/probono': (_) => const ProbonoPage(),
+            '/meetings': (_) => MeetingsScreen(),
+            '/clients': (_) => ConsultationSummariesPage(),
+            '/manager' :(_) => ManagerPage(),
+          },
+        );
       },
     );
   }
