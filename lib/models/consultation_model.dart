@@ -6,8 +6,7 @@ class Consultation {
   final String lawyerName;
   final String clientId;
   final String clientName;
-  final DateTime consultationDate;
-  final String consultationTime;
+  final DateTime appointmentDateTime;
   final String status; // pending | accepted | rejected | completed
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -18,8 +17,7 @@ class Consultation {
     required this.lawyerName,
     required this.clientId,
     required this.clientName,
-    required this.consultationDate,
-    required this.consultationTime,
+    required this.appointmentDateTime,
     required this.status,
     required this.createdAt,
     this.updatedAt,
@@ -35,9 +33,8 @@ class Consultation {
       lawyerName: data['lawyerName'] ?? '',
       clientId: data['clientId'] ?? '',
       clientName: data['clientName'] ?? '',
-      consultationDate:
-          (data['consultationDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      consultationTime: data['consultationTime'] ?? '',
+      appointmentDateTime:
+          (data['appointmentDateTime'] as Timestamp).toDate(),
       status: data['status'] ?? 'pending',
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -53,8 +50,7 @@ class Consultation {
       'lawyerName': lawyerName,
       'clientId': clientId,
       'clientName': clientName,
-      'consultationDate': Timestamp.fromDate(consultationDate),
-      'consultationTime': consultationTime,
+      'appointmentDateTime': Timestamp.fromDate(appointmentDateTime),
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,

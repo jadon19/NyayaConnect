@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:nyaya_connect/pages/signup/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/bottom_nav_bar.dart';
@@ -14,7 +13,7 @@ import '../sidebar_menu/transactions.dart';
 import '../sidebar_menu/call_logs.dart';
 import '../sidebar_menu/feedback.dart';
 import 'package:share_plus/share_plus.dart';
-import '../documents/case_files.dart';
+import '../documents/cases/case_files.dart';
 import '../documents/consultation_summaries.dart';
 import '../documents/court_orders.dart';
 import '../documents/legal_templates.dart';
@@ -502,7 +501,7 @@ Future<void> _checkVerificationStatus() async {
   Widget _buildQuickActions() {
     final actions = [
       {'title': 'Meetings', 'route': '/meetings', 'icon': Icons.calendar_today},
-      {'title': 'Clients', 'route': '/clients', 'icon': Icons.people},
+      {'title': 'File Case', 'route': '/FileCase', 'icon': Icons.people},
       {'title': 'Earnings', 'route': '/manager', 'icon': Icons.manage_accounts_sharp},
     ];
 

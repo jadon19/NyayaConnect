@@ -11,54 +11,61 @@ class ConsultationService {
     required String lawyerName,
     required String clientId,
     required String clientName,
-    required DateTime date,
-    required String time,
+    required DateTime appointmentDateTime, // UTC
   }) async {
     try {
-      final consultationRef = await _firestore.collection('consultations').add({
+      final consultationRef =
+          await _firestore.collection('consultations').add({
         'lawyerId': lawyerId,
         'lawyerName': lawyerName,
         'clientId': clientId,
         'clientName': clientName,
-        'consultationDate': Timestamp.fromDate(date),
-        'consultationTime': time,
-        'status': 'pending', // pending | accepted | rejected | completed
+
+        // 🔑 SINGLE SOURCE OF TRUTH
+        'appointmentDateTime':
+            Timestamp.fromDate(appointmentDateTime),
+
+        'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // notify lawyer
+      // 🔔 Notify lawyer
       await _firestore.collection('notifications').add({
         'userId': lawyerId,
         'userType': 'lawyer',
         'type': 'consultation_request',
-        'title': 'New Consultation Request',
-        'message':
-            '$clientName requested a consultation on ${_formatDate(date)} at $time',
         'consultationId': consultationRef.id,
+
         'clientId': clientId,
         'clientName': clientName,
-        'consultationDate': Timestamp.fromDate(date),
-        'consultationTime': time,
+        'lawyerName': lawyerName,
+
+        // 🔑 same datetime
+        'appointmentDateTime':
+            Timestamp.fromDate(appointmentDateTime),
+
         'status': 'pending',
         'isRead': false,
-        'timestamp': Timestamp.now(),
-
+        'timestamp': FieldValue.serverTimestamp(),
       });
-      // Notify the USER also
-await _firestore.collection('notifications').add({
-  'userId': clientId,                // <-- THIS IS THE USER'S ID
-  'userType': 'client',
-  'title': 'Request sent to $lawyerName',   // FIXED
-  'lawyerName': lawyerName,
-  'message': 'Your consultation request to $lawyerName is pending.',
-  'consultationId': consultationRef.id,
-  'status': 'pending',
-  'isRead': false,
-  'timestamp': Timestamp.now(),
 
-});
+      // 🔔 Notify client
+      await _firestore.collection('notifications').add({
+        'userId': clientId,
+        'userType': 'client',
+        'type': 'consultation',
 
+        'consultationId': consultationRef.id,
+        'lawyerName': lawyerName,
+
+        'appointmentDateTime':
+            Timestamp.fromDate(appointmentDateTime),
+
+        'status': 'pending',
+        'isRead': false,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
       return consultationRef.id;
     } catch (e) {
@@ -66,33 +73,29 @@ await _firestore.collection('notifications').add({
     }
   }
 
-  /// Get all consultations for a lawyer (past + upcoming)
+  /// Get consultations for lawyer
   Stream<List<Consultation>> getLawyerConsultations(String lawyerId) {
     return _firestore
         .collection('consultations')
         .where('lawyerId', isEqualTo: lawyerId)
-        .orderBy('consultationDate', descending: false)
+        .orderBy('appointmentDateTime')
         .snapshots()
-        .map(
-          (snap) =>
-              snap.docs.map((d) => Consultation.fromFirestore(d)).toList(),
-        );
+        .map((snap) =>
+            snap.docs.map((d) => Consultation.fromFirestore(d)).toList());
   }
 
-  /// Get all consultations for a client (history)
+  /// Get consultations for client
   Stream<List<Consultation>> getClientConsultations(String clientId) {
     return _firestore
         .collection('consultations')
         .where('clientId', isEqualTo: clientId)
-        .orderBy('consultationDate', descending: false)
+        .orderBy('appointmentDateTime')
         .snapshots()
-        .map(
-          (snap) =>
-              snap.docs.map((d) => Consultation.fromFirestore(d)).toList(),
-        );
+        .map((snap) =>
+            snap.docs.map((d) => Consultation.fromFirestore(d)).toList());
   }
 
-  /// NEW: Get pending consultations for lawyer (for alerts)
+  /// Pending consultations for lawyer
   Stream<List<Consultation>> getPendingConsultationsForLawyer(String lawyerId) {
     return _firestore
         .collection('consultations')
@@ -100,58 +103,50 @@ await _firestore.collection('notifications').add({
         .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snap) =>
-              snap.docs.map((d) => Consultation.fromFirestore(d)).toList(),
-        );
+        .map((snap) =>
+            snap.docs.map((d) => Consultation.fromFirestore(d)).toList());
   }
 
   /// Lawyer accepts consultation
   Future<void> acceptConsultation(
-    String consultationId,
-    String lawyerId,
-  ) async {
+      String consultationId, String lawyerId) async {
     try {
-      // 1. Update consultation status
-      await _firestore.collection('consultations').doc(consultationId).update({
+      await _firestore
+          .collection('consultations')
+          .doc(consultationId)
+          .update({
         'status': 'accepted',
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 2. Fetch consultation details
       final doc = await _firestore
           .collection('consultations')
           .doc(consultationId)
           .get();
       final data = doc.data()!;
 
-      final clientId = data['clientId'];
-      final clientName = data['clientName'];
-      final lawyerName = data['lawyerName'];
-      final date = (data['consultationDate'] as Timestamp).toDate();
-      final time = data['consultationTime'];
+      final DateTime appointmentDateTime =
+          (data['appointmentDateTime'] as Timestamp).toDate();
 
-      // 3. Create meeting
+      // Create meeting
       await MeetingService().createMeeting(
         consultationId: consultationId,
         lawyerId: lawyerId,
-        lawyerName: lawyerName,
-        clientId: clientId,
-        clientName: clientName,
-        date: date,
-        time: time,
+        lawyerName: data['lawyerName'],
+        clientId: data['clientId'],
+        clientName: data['clientName'],
+        appointmentDateTime: appointmentDateTime,
       );
 
-      // 4. Send notification to the user
+      // Notify client
       await _firestore.collection('notifications').add({
-        'userId': clientId,
-        'lawyerName': lawyerName,
-        'title': 'Consultation Accepted',
-        'message': 'Your meeting with $lawyerName is scheduled.',
-        'timestamp': Timestamp.now(),
-
-        'type': 'consultation_accepted',
+        'userId': data['clientId'],
+        'type': 'consultation',
         'status': 'accepted',
+        'lawyerName': data['lawyerName'],
+        'appointmentDateTime':
+            data['appointmentDateTime'],
+        'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       throw Exception("Error accepting consultation: $e");
@@ -161,58 +156,31 @@ await _firestore.collection('notifications').add({
   /// Lawyer rejects consultation
   Future<void> rejectConsultation(String consultationId) async {
     try {
-      await _firestore.collection('consultations').doc(consultationId).update({
+      await _firestore
+          .collection('consultations')
+          .doc(consultationId)
+          .update({
         'status': 'rejected',
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // fetch details to notify client
       final doc = await _firestore
           .collection('consultations')
           .doc(consultationId)
           .get();
       final data = doc.data()!;
-      final clientId = data['clientId'];
-      final lawyerName = data['lawyerName'];
-      final date = (data['consultationDate'] as Timestamp).toDate();
-      final time = data['consultationTime'];
 
       await _firestore.collection('notifications').add({
-        'userId': clientId,
-        'userType': 'client',
-        'type': 'consultation_rejected',
-        'title': 'Consultation Rejected',
-        'message':
-            'Your consultation with $lawyerName scheduled for ${_formatDate(date)} at $time was rejected.',
-        'consultationId': consultationId,
-        'lawyerName': lawyerName,
-        'consultationDate': Timestamp.fromDate(date),
-        'consultationTime': time,
+        'userId': data['clientId'],
+        'type': 'consultation',
         'status': 'rejected',
-        'isRead': false,
-        'timestamp': Timestamp.now(),
-
+        'lawyerName': data['lawyerName'],
+        'appointmentDateTime':
+            data['appointmentDateTime'],
+        'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       throw Exception("Failed to reject consultation: $e");
     }
-  }
-
-  String _formatDate(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }

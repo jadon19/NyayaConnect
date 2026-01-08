@@ -93,6 +93,27 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
 
     setState(() => _isSubmitting = true);
+    DateTime _combineDateAndTime(DateTime date, String time) {
+  final timeParts = time.split(' ');
+  final hm = timeParts[0].split(':');
+  int hour = int.parse(hm[0]);
+  final minute = int.parse(hm[1]);
+  final isPM = timeParts[1] == 'PM';
+
+  if (isPM && hour != 12) hour += 12;
+  if (!isPM && hour == 12) hour = 0;
+
+  return DateTime(
+    date.year,
+    date.month,
+    date.day,
+    hour,
+    minute,
+  );
+}
+final appointmentDateTime =
+    _combineDateAndTime(_selectedDate, _selectedTime!);
+
 
     try {
       await _appointmentService.createConsultation(
@@ -100,8 +121,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         lawyerName: widget.lawyerName,
         clientId: _clientId!,
         clientName: _clientName ?? 'User',
-        date: _selectedDate,
-        time: _selectedTime!,
+        
+  appointmentDateTime: appointmentDateTime.toUtc(),
       );
 
       if (mounted) {
