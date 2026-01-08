@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding/onboarding_page_1.dart';
 import 'login.dart';
+import 'package:nyaya_connect/l10n/app_localizations.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -141,9 +142,9 @@ void didChangeDependencies() {
               opacity: _textAnimation,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Text(
-                    'NyayaConnect',
+                    AppLocalizations.of(context)!.appTitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
@@ -153,7 +154,7 @@ void didChangeDependencies() {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Justice delivered digitally',
+                    AppLocalizations.of(context)!.tagline,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,

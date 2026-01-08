@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/simple_gradient_header.dart';
+
 class AIDoubtForumPage extends StatefulWidget {
   const AIDoubtForumPage({super.key});
 
@@ -17,83 +18,84 @@ class _AIDoubtForumPageState extends State<AIDoubtForumPage> {
   String _response = '';
   bool _isLoading = false;
 
-  /// 🔹 Ask GitHub Models → OpenAI GPT-4o-mini
-Future<void> _askAI() async {
-  final query = _controller.text.trim();
-  if (query.isEmpty) return;
+  /// 🔹 Ask NyayaAI (GitHub Models → OpenAI o4-mini)
+  Future<void> _askAI() async {
+    final query = _controller.text.trim();
+    if (query.isEmpty) return;
 
-  setState(() {
-    _isLoading = true;
-    _response = '';
-  });
-
-  final githubToken = dotenv.env['GITHUB_TOKEN'];
-
-  if (githubToken == null || githubToken.isEmpty) {
     setState(() {
-      _response = "⚠️ Missing GITHUB_TOKEN. Please check your .env file.";
-      _isLoading = false;
+      _isLoading = true;
+      _response = '';
     });
-    return;
-  }
 
-  try {
-    final res = await http
-        .post(
-          Uri.parse("https://models.githubusercontent.com/v1/chat/completions"),
+    final githubToken = dotenv.env['GITHUB_TOKEN'];
 
+    if (githubToken == null || githubToken.isEmpty) {
+      setState(() {
+        _response = "⚠️ Missing GITHUB_TOKEN. Please check your .env file.";
+        _isLoading = false;
+      });
+      return;
+    }
 
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer $githubToken",
-          },
-          body: jsonEncode({
-            "model": "gpt-4o-mini",
-            "messages": [
-              {
-                "role": "system",
-                "content": """
-You are **NyayaAI**, an expert in **Indian Law only** (IPC, CrPC, IEA, Constitution of India, Special Acts, legal rights, legal procedures, and judicial interpretations).
+    try {
+      final res = await http
+          .post(
+        Uri.parse(
+          "https://models.github.ai/inference/chat/completions",
+        ),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $githubToken",
+        },
+        body: jsonEncode({
+          "model": "openai/gpt-4o-mini",
+          "messages": [
+            {
+              "role": "developer",
+              "content": """
+You are NyayaAI, an expert in Indian Law only.
 
-### Your strict rules:
-1. **Answer ONLY law-related questions.**
-2. If a question is not related to *Indian law*, politely decline:
-  - Example: “I can only help with Indian law–related questions.”
-3. For every valid query:
-  - Provide clear, simple explanations.
-  - Mention relevant IPC/CrPC/Constitution sections.
-  - Add examples or real-life scenarios.
-  - Add legal procedure where needed (FIR, Bail, Court process, etc.)
-4. Do NOT hallucinate. If unsure, say:
-  - “This requires a licensed advocate. However, here is the general legal information…”
-
-Stay accurate and helpful.
-""",
-              },
-              {"role": "user", "content": query},
-            ],
-          }),
-          )
+Rules:
+1. Answer ONLY Indian law-related questions.
+2. If the question is not related to Indian law, politely decline.
+3. Mention relevant IPC / CrPC / Constitution sections when applicable.
+4. Give clear explanations with examples.
+5. If unsure, say that a licensed advocate should be consulted.
+"""
+            },
+            {
+              "role": "user",
+              "content": query,
+            }
+          ],
+        }),
+      )
           .timeout(const Duration(seconds: 25));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-
         final reply =
             data["choices"]?[0]?["message"]?["content"] ??
-            "⚠️ No response from model.";
+                "⚠️ No response from model.";
 
-        setState(() => _response = "🧠 *Legal Explanation:*\n$reply");
+        setState(() {
+          _response = "🧠 Legal Explanation:\n\n$reply";
+        });
       } else {
-        setState(
-          () => _response =
-              "⚠️ GitHub Model Error ${res.statusCode}: ${res.body}",
-        );
+        setState(() {
+          _response =
+          "⚠️ GitHub Models Error ${res.statusCode}\n\n${res.body}";
+        });
       }
     } catch (e) {
-      setState(() => _response = "⚠️ Exception: $e");
+      setState(() {
+        _response = "⚠️ Exception: $e";
+      });
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -102,12 +104,11 @@ Stay accurate and helpful.
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: Column(
         children: [
-          // 🔵 Gradient Header
+          /// 🔵 Gradient Header
           const SimpleGradientHeader(
-            title: "AI Doubt Forum"
+            title: "AI Doubt Forum",
           ),
 
           Expanded(
@@ -115,7 +116,7 @@ Stay accurate and helpful.
               top: false,
               child: Column(
                 children: [
-                  // 🔍 Ask input
+                  /// 🔍 Question Input
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: TextField(
@@ -123,8 +124,9 @@ Stay accurate and helpful.
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _askAI(),
                       decoration: InputDecoration(
-                        hintText: 'Ask your legal question...',
-                        prefixIcon: const Icon(Icons.gavel, color: Colors.blue),
+                        hintText: 'Ask your legal question (Indian law)...',
+                        prefixIcon:
+                        const Icon(Icons.gavel, color: Colors.blue),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
@@ -139,13 +141,17 @@ Stay accurate and helpful.
                     ),
                   ),
 
-                  // 🧠 Ask button
+                  /// 🧠 Ask Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: ElevatedButton.icon(
                       onPressed: _isLoading ? null : _askAI,
-                      icon: const Icon(Icons.balance, color: Colors.white),
-                      label: const Text('Ask NyayaAI',style: TextStyle(color: Colors.white),),
+                      icon:
+                      const Icon(Icons.balance, color: Colors.white),
+                      label: const Text(
+                        'Ask NyayaAI',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1976D2),
                         minimumSize: const Size.fromHeight(50),
@@ -158,7 +164,7 @@ Stay accurate and helpful.
 
                   const SizedBox(height: 20),
 
-                  // 🧾 AI Response Section
+                  /// 🧾 Response Section
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -173,75 +179,80 @@ Stay accurate and helpful.
                         ),
                       ),
                       child: _isLoading
-                          ? const Center(child: CircularProgressIndicator())
+                          ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
                           : _response.isNotEmpty
-                              ? SingleChildScrollView(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        "AI Response:",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        _response,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          height: 1.4,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
+                          ? SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "AI Response",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              _response,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                                      // 📋 Copy button
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: ElevatedButton.icon(
-                                          onPressed: () {
-                                            Clipboard.setData(
-                                              ClipboardData(text: _response),
-                                            );
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                content:
-                                                    Text('Copied to clipboard'),
-                                              ),
-                                            );
-                                          },
-                                          icon: const Icon(
-                                            Icons.copy,
-                                            color: Colors.white,
-                                          ),
-                                          label: const Text('Copy'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.blueAccent,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : const Center(
-                                  child: Text(
-                                    'Ask any query related to *Indian law* to receive an AI-powered explanation.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.black54,
-                                      fontSize: 16,
+                            /// 📋 Copy Button
+                            Align(
+                              alignment:
+                              Alignment.centerRight,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(
+                                        text: _response),
+                                  );
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Copied to clipboard'),
                                     ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy,
+                                    color: Colors.white),
+                                label:
+                                const Text('Copy'),
+                                style:
+                                ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                  Colors.blueAccent,
+                                  shape:
+                                  RoundedRectangleBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(
+                                        8),
                                   ),
                                 ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                          : const Center(
+                        child: Text(
+                          'Ask any question related to Indian law to get an AI-powered legal explanation.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.black54,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],

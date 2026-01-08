@@ -1,0 +1,47 @@
+{
+    "appTitle": "NyayaConnect",
+    "tagline": "Justice delivered digitally",
+    "helloWorld": "Hello World",
+    "changeLanguage": "Change Language",
+    "welcome": "Welcome, {userName}",
+    "@welcome": {
+        "placeholders": {
+            "userName": {
+                "type": "String"
+            }
+        }
+    },
+
+    "quickActions": "Quick Actions",
+    "consultLawyer": "Consult Lawyer",
+    "documentReview": "Document Review",
+    "meetingScheduled": "Meeting Scheduled",
+    "documents": "Documents",
+    "caseFiles": "Case files",
+    "consultationSummaries": "Consultation Summaries",
+    "courtOrders": "Court Orders",
+    "legalTemplates": "Legal Templates",
+    "eCourt": "E-Court",
+    "eCourtDesc": "Access virtual courtrooms and manage your cases digitally.",
+    "enterCourtroom": "Enter a courtroom",
+    "aiDoubtForum": "AI Doubt Forum",
+    "aiDoubtForumDesc": "Get AI-powered assistance for legal queries and case research.",
+    "askAiAgent": "Ask AI Agent",
+    "contactNgo": "Contact NGO",
+    "contactNgoDesc": "Reach out to registered NGOs for free legal assistance and support.",
+    "contactNow": "Contact Now",
+    "findProbono": "Find Probono Lawyer",
+    "findProbonoDesc": "Because justice should never depend on your income—get the legal support you deserve at no cost.",
+    "myLearning": "My Learning",
+    "myLearningDesc": "Your Path to Legal Knowledge Starts Here. Master Legal Basics, Anytime, Anywhere.",
+    "startLearning": "Start Learning",
+    "whatClientsSay": "What Clients Say",
+    "emergencyHelp": "Emergency Help",
+    "emergencyDialogTitle": "Emergency Legal Help",
+    "emergencyDialogContent": "Do you need immediate legal assistance? We can connect you with an emergency consultant right away.",
+    "cancel": "Cancel",
+    "getHelpNow": "Get Help Now",
+    "goodMorning": "Good Morning",
+    "goodAfternoon": "Good Afternoon",
+    "goodEvening": "Good Evening"
+}
