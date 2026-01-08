@@ -10,7 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'book_lawyer/consult_lawyer_page.dart';
 import 'features/document_review.dart';
 import '../calls/meeting_page.dart';
-import '../documents/case_files.dart';
+import '../documents/cases/case_files.dart';
 import '../documents/consultation_summaries.dart';
 import '../documents/court_orders.dart';
 import '../documents/legal_templates.dart';

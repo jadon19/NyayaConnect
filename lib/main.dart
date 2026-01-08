@@ -16,7 +16,7 @@ import 'pages/calls/meeting_page.dart';
 import 'pages/documents/consultation_summaries.dart';
 import 'pages/advocate/features/manager.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'pages/documents/cases/case_files.dart';
 
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -82,6 +82,7 @@ class MyApp extends StatelessWidget {
         '/meetings': (_) => MeetingsScreen(),
         '/clients': (_) => ConsultationSummariesPage(),
         '/manager' :(_) => ManagerPage(),
+        '/FileCase':(_)=> CaseFilesPage(),
       },
     );
   }

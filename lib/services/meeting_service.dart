@@ -6,28 +6,30 @@ class MeetingService {
 
   // Create meeting after consultation acceptance
   Future<String> createMeeting({
-    required String consultationId,
-    required String lawyerId,
-    required String lawyerName,
-    required String clientId,
-    required String clientName,
-    required DateTime date,
-    required String time,
-  }) async {
-    final ref = await _firestore.collection('meetings').add({
-      'consultationId': consultationId,
-      'lawyerId': lawyerId,
-      'lawyerName': lawyerName,
-      'clientId': clientId,
-      'clientName': clientName,
-      'date': Timestamp.fromDate(date),
-      'time': time,
-      'status': 'scheduled',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  required String consultationId,
+  required String lawyerId,
+  required String lawyerName,
+  required String clientId,
+  required String clientName,
+  required DateTime appointmentDateTime,
+}) async {
+  final ref = await _firestore.collection('meetings').add({
+    'consultationId': consultationId,
+    'lawyerId': lawyerId,
+    'lawyerName': lawyerName,
+    'clientId': clientId,
+    'clientName': clientName,
 
-    return ref.id;
-  }
+    // 🔑 single field
+    'appointmentDateTime':
+        Timestamp.fromDate(appointmentDateTime),
+
+    'status': 'scheduled',
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+
+  return ref.id;
+}
 
   // Get upcoming meetings for user
   Stream<List<Meeting>> getUserMeetings(String userId) {

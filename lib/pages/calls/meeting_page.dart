@@ -3,6 +3,12 @@ import '../../../../services/meeting_service.dart';
 import '../../../../models/meeting_model.dart';
 import '../../../../services/user_manager.dart';
 import 'join_call_screen.dart';
+import '../../services/payment_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../documents/view_summary.dart';
+import '../advocate/features/upload_summary.dart';
+import '../users/features/rate_lawyer.dart';
+import 'package:intl/intl.dart';
 
 class MeetingsScreen extends StatelessWidget {
   MeetingsScreen({super.key});
@@ -38,10 +44,7 @@ class MeetingsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final now = DateTime.now();
-          final meetingList = (snapshot.data ?? [])
-              .where((m) => m.fullDateTime.isAfter(now))
-              .toList();
+          final meetingList = (snapshot.data ?? []);
 
           if (meetingList.isEmpty) {
             return _buildEmptyUI(isLawyer);
@@ -61,12 +64,10 @@ class MeetingsScreen extends StatelessWidget {
 
   // REUSABLE UI
   Widget _buildMeetingTile(BuildContext context, Meeting m, bool isLawyer) {
-    final dt = m.fullDateTime;
-    final now = DateTime.now();
-
     //CHANGE THE CONDITION TO BELOW AFTER TESTING
-    //final isJoinPossible = dt.difference(now).inMinutes <= 10 && dt.isAfter(now);
-    final isJoinPossible = true; // TEMP: Always show Join Now
+    //final canJoin = dt.difference(now).inMinutes <= 10 && dt.isAfter(now);
+    final bool canJoin = !m.callCompleted;
+    // TEMP: Always show Join Now
 
     return Card(
       margin: const EdgeInsets.all(12),
@@ -80,39 +81,16 @@ class MeetingsScreen extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("${m.date.toString().substring(0, 10)} at ${m.time}"),
+            Text(
+              DateFormat(
+                'dd MMM yyyy, hh:mm a',
+              ).format(m.appointmentDateTime.toLocal()),
+            ),
 
-            if (isJoinPossible) ...[
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity, // full width of card
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF004AAD),
-                    minimumSize: const Size.fromHeight(44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(
-                        color: Color(0xFF42A5F5),
-                        width: 1.4,
-                      ),
-                    ),
-                  ),
-                  label: const Text(
-                    "Join Meeting",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => JoinCallScreen(meeting: m),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            if (canJoin) ...[
+              _joinMeetingButton(context, m),
+            ] else ...[
+              _postCallActions(context, m, isLawyer),
             ],
           ],
         ),
@@ -150,4 +128,201 @@ class MeetingsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _joinMeetingButton(BuildContext context, Meeting m) {
+  return SizedBox(
+    width: double.infinity,
+    child: ElevatedButton.icon(
+      icon: const Icon(Icons.video_call),
+      label: const Text("Join Meeting"),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => VideoCallScreen(meeting: m)),
+        );
+      },
+    ),
+  );
+}
+
+Widget _postCallActions(BuildContext context, Meeting m, bool isLawyer) {
+  if (isLawyer) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        child: Text(
+          m.summaryUploaded == true ? "Update Summary" : "Upload Summary",
+        ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => UploadSummaryPage(meeting: m)),
+          );
+        },
+      ),
+    );
+  }
+
+  // CLIENT UI
+  return StatefulBuilder(
+    builder: (context, setState) {
+      bool paying = false;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Consultation Fee: ₹${m.amount}",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.green.shade700,
+              fontSize: 16,
+            ),
+          ),
+          if (m.paymentStatus == 'blocked') ...[
+            const Text(
+              "Payment will be enabled after the lawyer uploads the consultation summary.",
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed:
+                      (m.summaryUploaded == true &&
+                          m.paymentStatus == 'pending' &&
+                          m.razorpayOrderId != null)
+                      ? () async {
+                          if (paying) return;
+                          setState(() => paying = true);
+
+                          try {
+                            final paymentService = PaymentService.instance;
+
+                            paymentService.init(
+                              onSuccess: (response) async {
+                                await FirebaseFirestore.instance
+                                    .collection('meetings')
+                                    .doc(m.id)
+                                    .update({'paymentStatus': 'paid'});
+
+                                await FirebaseFirestore.instance
+                                    .collection('transactions')
+                                    .add({
+                                      'meetingId': m.id,
+                                      'clientId': UserManager().userCustomId,
+                                      'clientName': m.clientName,
+                                      'lawyerId': m.lawyerId,
+                                      'lawyerName': m.lawyerName,
+                                      'amount': m.amount,
+                                      'paymentGateway': 'Razorpay',
+                                      'razorpayOrderId': response.orderId,
+                                      'razorpayPaymentId': response.paymentId,
+                                      'status': 'success',
+                                      'createdAt': FieldValue.serverTimestamp(),
+                                    });
+
+                                Future.delayed(
+                                  const Duration(milliseconds: 500),
+                                  () {
+                                    PaymentService.instance.dispose();
+                                  },
+                                );
+                                setState(() => paying = false);
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Payment successful"),
+                                  ),
+                                );
+                              },
+                              onError: (error) {
+                                paymentService.dispose();
+                                setState(() => paying = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Payment failed"),
+                                  ),
+                                );
+                              },
+                            );
+
+                            paymentService.openCheckout(
+                              orderId: m.razorpayOrderId!,
+                              amount: m.amount,
+                              name: "NyayaConnect",
+                              description: "Legal Consultation",
+                            );
+                          } catch (e) {
+                            setState(() => paying = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Payment error")),
+                            );
+                          }
+                        }
+                      : null,
+
+                  child: paying
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text("Pay Now"),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: m.paymentStatus == 'paid'
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ViewSummaryPage(
+                                meetingId: m.id,
+                                paymentStatus: m.paymentStatus,
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: const Text("View Summary"),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RateLawyerPage(
+                    lawyerId: m.lawyerId,
+                    lawyerName: m.lawyerName,
+                  ),
+                ),
+              );
+            },
+            child: const Text("Rate Lawyer"),
+          ),
+        ],
+      );
+    },
+  );
 }
