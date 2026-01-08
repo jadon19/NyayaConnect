@@ -1,4 +1,4 @@
-# 🏛️ Nyaya Connect: Justice Delivered Digitally
+# Nyaya Connect: Justice Delivered Digitally
 
 Nyaya Connect is a **mobile-first digital legal assistance and e-justice platform** designed to improve **accessibility, transparency, and efficiency** in legal service delivery. The platform bridges the gap between **citizens, lawyers, NGOs, and legal institutions** by providing a unified, secure, and scalable digital interface for legal consultations and case management.
 
@@ -6,7 +6,7 @@ This project was developed as a **Final Year B.E. Computer Science & Engineering
 
 ---
 
-## 📌 Problem Statement
+##  Problem Statement
 
 In India, access to legal services remains **fragmented and inefficient**, particularly for rural and economically weaker communities. Small law firms and legal aid NGOs often operate with:
 
@@ -19,7 +19,7 @@ The absence of a **centralized, secure digital platform** results in delays, red
 
 ---
 
-## 🎯 Objectives
+##  Objectives
 
 * Develop a **centralized digital platform** connecting citizens, lawyers, and legal aid NGOs
 * Provide **AI-powered preliminary legal guidance** to improve legal literacy
@@ -29,19 +29,19 @@ The absence of a **centralized, secure digital platform** results in delays, red
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
-* 🔐 **Secure User Authentication** using Firebase
-* 🧑‍⚖️ **Lawyer & NGO Profile Management**
-* 📄 **Case Submission & Document Upload**
-* ⏱️ **Real-Time Case Tracking and Status Updates**
-* 🔔 **Push Notifications & Alerts**
-* 🤖 **AI Doubt Forum** for preliminary legal guidance
-* 🌐 **Cloud-based, Scalable Architecture**
+*  **Secure User Authentication** using Firebase
+*  **Lawyer & NGO Profile Management**
+*  **Case Submission & Document Upload**
+*  **Real-Time Case Tracking and Status Updates**
+*  **Push Notifications & Alerts**
+*  **AI Doubt Forum** for preliminary legal guidance
+*  **Cloud-based, Scalable Architecture**
 
 ---
 
-## 📸 Application Screenshots
+##  Application Screenshots
 ### Login & Authentication
 <img width="294" height="439" alt="image" src="https://github.com/user-attachments/assets/87f5ff59-99cf-466d-8ec2-a4379da03a3b" /> <img width="294" height="439" alt="image" src="https://github.com/user-attachments/assets/5a1525bd-69d4-4930-b6ff-d0c837e6dd4f" />
 
@@ -58,7 +58,7 @@ The absence of a **centralized, secure digital platform** results in delays, red
 
 ---
 
-## 🏗️ System Architecture (High Level)
+##  System Architecture (High Level)
 
 Nyaya Connect follows a **cloud-based, role-driven architecture**:
 
@@ -71,7 +71,7 @@ All users are routed through **role-based dashboards** (Citizen / Lawyer / Admin
 
 ---
 
-## 🧩 Major Modules
+##  Major Modules
 
 ### 1. User (Citizen) Module
 
@@ -116,7 +116,7 @@ All users are routed through **role-based dashboards** (Citizen / Lawyer / Admin
 
 ---
 
-## 🧪 Testing & Performance
+##  Testing & Performance
 
 The system was tested using:
 
@@ -135,7 +135,7 @@ The system was tested using:
 
 ---
 
-## 📊 Research Publication
+##  Research Publication
 
 **Title:** *Nyaya Connect: Justice Delivered Digitally*
 **Journal:** International Journal of Scientific Research in Engineering and Management (IJSREM)
@@ -153,9 +153,9 @@ The system was tested using:
 
 ---
 
-## 📂 Repository Note
+## Repository Note
 
-> ⚠️ **Note on Repository Structure**
+>  **Note on Repository Structure**
 
 This repository was initialized with the standard Flutter project structure.
 The **core implementation and functional modules** were developed and tested locally as part of the academic project and are demonstrated through the working mobile application and documented research paper.
@@ -168,9 +168,9 @@ The repository serves as:
 
 ---
 
-## 🔮 Future Enhancements
+##  Future Enhancements
 
-* Multilingual NLP support for regional languages
+
 * Voice-based legal assistance
 * Integration with official **e-Court systems**
 * Blockchain-based document verification
@@ -179,10 +179,7 @@ The repository serves as:
 
 ---
 
-## 🏁 Conclusion
-
-Nyaya Connect demonstrates how **modern mobile and cloud technologies** can be leveraged to improve access to justice. By simplifying legal consultation workflows, enhancing transparency, and integrating AI-driven assistance, the platform contributes meaningfully to the **digital transformation of the legal ecosystem**.
 
 
 
-You’re walking into that external **prepared and in control**, Tribal Chief 👑
+
