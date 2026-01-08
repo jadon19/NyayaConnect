@@ -21,6 +21,8 @@ import 'profile.dart';
 import '../sidebar_menu/feedback.dart';
 import 'package:share_plus/share_plus.dart';
 import '../community/community.dart';
+import '../../services/language_manager.dart';
+import 'package:nyaya_connect/l10n/app_localizations.dart';
 
 class HomeScreenUser extends StatefulWidget {
   final String userName;
@@ -109,7 +111,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome, ${widget.userName}'),
+        title: Text(AppLocalizations.of(context)!.welcome(widget.userName)),
         backgroundColor: const Color(0xFF42A5F5),
         foregroundColor: Colors.white,
         actions: [
@@ -176,15 +178,13 @@ class _HomeScreenUserState extends State<HomeScreenUser>
           ),
         ],
       ),
-      floatingActionButton:
-          _currentIndex ==
-              2 // 2 = Community tab
+      floatingActionButton: _currentIndex == 2
           ? null // Hide FAB on this tab
           : FloatingActionButton.extended(
               backgroundColor: const Color(0xFFE53E3E),
               onPressed: _showEmergencyDialog,
               icon: const Icon(Icons.support_agent, color: Colors.white),
-              label: const Text('Emergency Help'),
+              label: Text(AppLocalizations.of(context)!.emergencyHelp),
             ),
 
       bottomNavigationBar: CustomBottomNavBar(
@@ -217,6 +217,11 @@ class _HomeScreenUserState extends State<HomeScreenUser>
         },
       },
       {'icon': Icons.feedback, 'label': 'Feedback', 'page': FeedbackScreen()},
+      {
+        'icon': Icons.language,
+        'label': 'Language',
+        'action': _showLanguageDialog,
+      },
     ];
 
     return Material(
@@ -305,17 +310,17 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   Widget _buildQuickActions() {
     final actions = [
       {
-        'title': 'Consult Lawyer',
+        'title': AppLocalizations.of(context)!.consultLawyer,
         'icon': Icons.gavel,
         'page': const ConsultLawyerPage(),
       },
       {
-        'title': 'Document Review',
+        'title': AppLocalizations.of(context)!.documentReview,
         'icon': Icons.description,
         'page': const DocumentReviewPage(),
       },
       {
-        'title': 'Meeting Scheduled',
+        'title': AppLocalizations.of(context)!.meetingScheduled,
         'icon': Icons.calendar_today,
         'page': MeetingsScreen(),
       },
@@ -494,7 +499,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Good ${_getGreeting()},",
+                "${_getGreeting(context)},",
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -520,22 +525,22 @@ class _HomeScreenUserState extends State<HomeScreenUser>
   Widget _buildDocuments() {
     final List<Map<String, dynamic>> docs = [
       {
-        'title': 'Case files',
+        'title': AppLocalizations.of(context)!.caseFiles,
         'page': const CaseFilesPage(),
         'icon': Icons.folder_shared,
       },
       {
-        'title': 'Consultation Summaries',
+        'title': AppLocalizations.of(context)!.consultationSummaries,
         'page': const ConsultationSummariesPage(),
         'icon': Icons.article,
       },
       {
-        'title': 'Court Orders',
+        'title': AppLocalizations.of(context)!.courtOrders,
         'page': const CourtOrdersPage(),
         'icon': Icons.gavel,
       },
       {
-        'title': 'Legal Templates',
+        'title': AppLocalizations.of(context)!.legalTemplates,
         'page': const LegalTemplatesPage(),
         'icon': Icons.description,
       },
@@ -634,61 +639,61 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   const SizedBox(height: 20),
 
                   // 🔹 Quick Actions
-                  _buildSectionHeader("Quick Actions"),
+                  _buildSectionHeader(AppLocalizations.of(context)!.quickActions),
                   _buildQuickActions(),
                   const SizedBox(height: 25),
 
                   // 🔹 Documents Section
-                  _buildSectionHeader("Documents"),
+                  _buildSectionHeader(AppLocalizations.of(context)!.documents),
                   const SizedBox(height: 8),
                   _buildDocuments(),
                   const SizedBox(height: 16),
 
                   // 🔹 E-Court
                   _buildLegendCard(
-                    title: "E-Court",
+                    title: AppLocalizations.of(context)!.eCourt,
                     description:
-                        "Access virtual courtrooms and manage your cases digitally.",
-                    buttonText: "Enter a courtroom",
+                        AppLocalizations.of(context)!.eCourtDesc,
+                    buttonText: AppLocalizations.of(context)!.enterCourtroom,
                     onTap: () => Navigator.pushNamed(context, '/eCourt'),
                     icon: Icons.account_balance_outlined,
                   ),
 
                   // 🔹 AI Doubt Forum
                   _buildLegendCard(
-                    title: "AI Doubt Forum",
+                    title: AppLocalizations.of(context)!.aiDoubtForum,
                     description:
-                        "Get AI-powered assistance for legal queries and case research.",
-                    buttonText: "Ask AI Agent",
+                        AppLocalizations.of(context)!.aiDoubtForumDesc,
+                    buttonText: AppLocalizations.of(context)!.askAiAgent,
                     onTap: () => Navigator.pushNamed(context, '/aiDoubt'),
                     icon: Icons.smart_toy_outlined,
                   ),
 
                   const SizedBox(height: 20),
                   _buildLegendCard(
-                    title: "Contact NGO",
+                    title: AppLocalizations.of(context)!.contactNgo,
                     description:
-                        "Reach out to registered NGOs for free legal assistance and support.",
-                    buttonText: "Contact Now",
+                        AppLocalizations.of(context)!.contactNgoDesc,
+                    buttonText: AppLocalizations.of(context)!.contactNow,
                     onTap: () => Navigator.pushNamed(context, '/contactNgo'),
                     icon: Icons.handshake_outlined,
                   ),
                   const SizedBox(height: 20),
                   _buildLegendCard(
-                    title: "Find Probono Lawyer",
+                    title: AppLocalizations.of(context)!.findProbono,
                     description:
-                        "Because justice should never depend on your income—get the legal support you deserve at no cost.",
-                    buttonText: "Contact Now",
+                        AppLocalizations.of(context)!.findProbonoDesc,
+                    buttonText: AppLocalizations.of(context)!.contactNow,
                     onTap: () => Navigator.pushNamed(context, '/probono'),
                     icon: Icons.contact_page_outlined,
                   ),
                   const SizedBox(height: 25),
                   // 🔹 My Learning Section
                   _buildLegendCard(
-                    title: "My learning",
+                    title: AppLocalizations.of(context)!.myLearning,
                     description:
-                        "Your Path to Legal Knowledge Starts Here.Master Legal Basics, Anytime, Anywhere.",
-                    buttonText: "Start Learning",
+                        AppLocalizations.of(context)!.myLearningDesc,
+                    buttonText: AppLocalizations.of(context)!.startLearning,
                     onTap: () => Navigator.pushNamed(context, '/mylearning'),
                     icon: Icons.lightbulb_outline,
                   ),
@@ -696,7 +701,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
                   const SizedBox(height: 25),
 
                   // 🔹 Testimonials
-                  _buildSectionHeader("What Clients Say"),
+                  _buildSectionHeader(AppLocalizations.of(context)!.whatClientsSay),
                   _buildTestimonials(),
                 ],
               ),
@@ -737,21 +742,21 @@ class _HomeScreenUserState extends State<HomeScreenUser>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Emergency Legal Help'),
-        content: const Text(
-          'Do you need immediate legal assistance? We can connect you with an emergency consultant right away.',
+        title: Text(AppLocalizations.of(context)!.emergencyDialogTitle),
+        content: Text(
+          AppLocalizations.of(context)!.emergencyDialogContent,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Get Help Now',
-              style: TextStyle(color: Colors.white),
+            child: Text(
+              AppLocalizations.of(context)!.getHelpNow,
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         ],
@@ -759,10 +764,47 @@ class _HomeScreenUserState extends State<HomeScreenUser>
     );
   }
 
-  String _getGreeting() {
+  String _getGreeting(BuildContext context) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Morning';
-    if (hour < 17) return 'Afternoon';
-    return 'Evening';
+    if (hour < 12) return AppLocalizations.of(context)!.goodMorning;
+    if (hour < 17) return AppLocalizations.of(context)!.goodAfternoon;
+    return AppLocalizations.of(context)!.goodEvening;
+  }
+
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.changeLanguage),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('English'),
+                onTap: () {
+                  LanguageManager().changeLanguage(const Locale('en'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text('हिंदी (Hindi)'),
+                onTap: () {
+                  LanguageManager().changeLanguage(const Locale('hi'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text('ಕನ್ನಡ (Kannada)'),
+                onTap: () {
+                  LanguageManager().changeLanguage(const Locale('kn'));
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
