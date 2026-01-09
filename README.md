@@ -115,6 +115,145 @@ All users are routed through **role-based dashboards** (Citizen / Lawyer / Admin
 | UI/UX          | Figma                    |
 
 ---
+# 🏗️ Technical Architecture
+
+## 🖥️ Frontend Stack
+
+- **React.js** – UI framework
+- **React Router** – Client-side navigation
+- **Axios** – HTTP client
+- **Context API / Redux** – State management
+- **CSS Modules / Styled Components** – Styling
+- **Form Validation Libraries** – Input validation
+
+---
+
+## 🛠️ Backend Stack
+
+- **Node.js** – Runtime environment
+- **Express.js** – Web framework
+- **MongoDB** – Database
+- **Mongoose** – Object Data Modeling (ODM)
+- **JWT** – Authentication
+- **Multer** – File uploads
+- **Bcrypt** – Password hashing
+- **Nodemailer** – Email notifications
+
+---
+
+## 🗄️ Database Schema
+
+### 👤 User Model
+
+```javascript
+{
+  name: String,
+  email: String, // unique
+  password: String, // hashed
+  role: ['citizen', 'lawyer', 'admin'],
+  phone: String,
+  address: Object,
+  createdAt: Date
+}
+```
+
+### ⚖️ Lawyer Model
+
+``` javascript
+{
+  userId: ObjectId, // ref: User
+  barCouncilId: String,
+  specialization: [String],
+  experience: Number,
+  rating: Number,
+  cases: Number,
+  availability: Object,
+  fees: Object
+}
+
+```
+
+### 📁 Case Model
+
+``` javascript
+{
+  title: String,
+  description: String,
+  client: ObjectId, // ref: User
+  lawyer: ObjectId, // ref: Lawyer
+  category: String,
+  status: ['pending', 'active', 'closed'],
+  documents: [ObjectId],
+  timeline: [Object],
+  createdAt: Date,
+  updatedAt: Date
+}
+
+```
+
+### 📄 Document Model
+
+``` javascript
+{
+  caseId: ObjectId, // ref: Case
+  uploadedBy: ObjectId, // ref: User
+  fileName: String,
+  fileUrl: String,
+  fileType: String,
+  uploadDate: Date
+}
+
+```
+
+### 🔗 Key API Endpoints
+
+| Method | Endpoint             | Description       |
+| ------ | -------------------- | ----------------- |
+| POST   | `/api/auth/register` | User registration |
+| POST   | `/api/auth/login`    | User login        |
+| POST   | `/api/auth/logout`   | User logout       |
+| GET    | `/api/auth/me`       | Get current user  |
+
+### ⚖️ Lawyers
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| GET    | `/api/lawyers`        | Get all lawyers (with filters) |
+| GET    | `/api/lawyers/:id`    | Get lawyer details             |
+| PUT    | `/api/lawyers/:id`    | Update lawyer profile          |
+| GET    | `/api/lawyers/search` | Search lawyers                 |
+
+
+### 📁 Cases
+| Method | Endpoint         | Description      |
+| ------ | ---------------- | ---------------- |
+| POST   | `/api/cases`     | Create new case  |
+| GET    | `/api/cases`     | Get user's cases |
+| GET    | `/api/cases/:id` | Get case details |
+| PUT    | `/api/cases/:id` | Update case      |
+| DELETE | `/api/cases/:id` | Delete case      |
+
+### 📄 Documents
+| Method | Endpoint                 | Description        |
+| ------ | ------------------------ | ------------------ |
+| POST   | `/api/documents/upload`  | Upload document    |
+| GET    | `/api/documents/:caseId` | Get case documents |
+| DELETE | `/api/documents/:id`     | Delete document    |
+
+
+### 🔒 Security Features
+| Feature              | Description                          |
+| -------------------- | ------------------------------------ |
+| Authentication       | JWT-based tokens with expiration     |
+| Authorization        | Role-based access control (RBAC)     |
+| Data Validation      | Input sanitization and validation    |
+| Password Security    | Bcrypt hashing with salt rounds      |
+| File Upload Security | File type validation and size limits |
+| CORS                 | Restricted to trusted origins        |
+| Rate Limiting        | Prevents API abuse                   |
+
+
+
+---
 
 ##  Testing & Performance
 
