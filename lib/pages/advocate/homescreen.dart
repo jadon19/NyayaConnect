@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nyaya_connect/pages/sidebar_menu/details.dart';
 import 'package:nyaya_connect/pages/signup/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/bottom_nav_bar.dart';
@@ -20,6 +21,7 @@ import '../documents/legal_templates.dart';
 import '../community/community.dart';
 import '../ai_doubt_forum.dart';
 import '../../services/user_manager.dart';
+
 class HomeScreenLawyer extends StatefulWidget {
   final String userName;
 
@@ -49,23 +51,37 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
     super.initState();
     _checkVerificationStatus();
 
-    _sidebarController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
-    _sidebarOffset = Tween<Offset>(
-      begin: const Offset(-1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _sidebarController, curve: Curves.easeInOut));
+    _sidebarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _sidebarOffset = Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _sidebarController, curve: Curves.easeInOut),
+        );
 
-    _menuItemsController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _menuItemsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
 
-    _fabController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-    _cardController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _fabController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _cardController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
-    _fabAnimation = CurvedAnimation(parent: _fabController, curve: Curves.elasticOut);
-    _cardAnimation = CurvedAnimation(parent: _cardController, curve: Curves.easeInOut);
+    _fabAnimation = CurvedAnimation(
+      parent: _fabController,
+      curve: Curves.elasticOut,
+    );
+    _cardAnimation = CurvedAnimation(
+      parent: _cardController,
+      curve: Curves.easeInOut,
+    );
 
     _fabController.forward();
     _cardController.forward();
@@ -79,49 +95,49 @@ class _HomeAdvocateScreenState extends State<HomeScreenLawyer>
     _cardController.dispose();
     super.dispose();
   }
-Future<void> _checkVerificationStatus() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
 
-  // STEP 1 — Read lawyerId (from UserManager or Firestore)
-  String? lawyerId = UserManager().lawyerId;
+  Future<void> _checkVerificationStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  if (lawyerId == null || lawyerId.trim().isEmpty) {
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
+    // STEP 1 — Read lawyerId (from UserManager or Firestore)
+    String? lawyerId = UserManager().lawyerId;
+
+    if (lawyerId == null || lawyerId.trim().isEmpty) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      lawyerId = userDoc.data()?['lawyerId'];
+    }
+
+    // No lawyerId: not submitted
+    if (lawyerId == null || lawyerId.trim().isEmpty) {
+      setState(() => _verificationStatus = "not_submitted");
+      return;
+    }
+
+    // STEP 2 — Fetch correct lawyer document using lawyerId
+    final lawyerDoc = await FirebaseFirestore.instance
+        .collection('lawyers')
+        .doc(lawyerId)
         .get();
 
-    lawyerId = userDoc.data()?['lawyerId'];
+    if (!lawyerDoc.exists) {
+      setState(() => _verificationStatus = "not_submitted");
+      return;
+    }
+
+    final status = lawyerDoc.data()?['verificationStatus'] ?? "not_submitted";
+
+    // Save locally
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('verification_status', status);
+
+    // Update UI
+    setState(() => _verificationStatus = status);
   }
-
-  // No lawyerId: not submitted
-  if (lawyerId == null || lawyerId.trim().isEmpty) {
-    setState(() => _verificationStatus = "not_submitted");
-    return;
-  }
-
-  // STEP 2 — Fetch correct lawyer document using lawyerId
-  final lawyerDoc = await FirebaseFirestore.instance
-      .collection('lawyers')
-      .doc(lawyerId)
-      .get();
-
-  if (!lawyerDoc.exists) {
-    setState(() => _verificationStatus = "not_submitted");
-    return;
-  }
-
-  final status = lawyerDoc.data()?['verificationStatus'] ?? "not_submitted";
-
-  // Save locally
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('verification_status', status);
-
-  // Update UI
-  setState(() => _verificationStatus = status);
-}
-
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -147,10 +163,8 @@ Future<void> _checkVerificationStatus() async {
   }
 
   void _onNavBarTap(int index) {
-  setState(() => _currentIndex = index);
-}
-
-  
+    setState(() => _currentIndex = index);
+  }
 
   void _navigateToVerification() {
     Navigator.push(
@@ -163,14 +177,14 @@ Future<void> _checkVerificationStatus() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome, ${widget.userName}',style: TextStyle(color: Colors.white)),
+        title: Text(
+          'Welcome, ${widget.userName}',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF42A5F5),
-        
+
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
 
@@ -210,19 +224,21 @@ Future<void> _checkVerificationStatus() async {
         ],
       ),
 
-      floatingActionButton:  _currentIndex == 2
-    ? null
-    :ScaleTransition(
-        scale: _fabAnimation,
-        child: FloatingActionButton.extended(
-          backgroundColor: const Color(0xFFE53E3E),
-          icon: const Icon(Icons.support_agent, color: Colors.white),
-          label: const Text("Emergency Help"),
-          onPressed: _showEmergencyDialog,
-        ),
+      floatingActionButton: _currentIndex == 2
+          ? null
+          : ScaleTransition(
+              scale: _fabAnimation,
+              child: FloatingActionButton.extended(
+                backgroundColor: const Color(0xFFE53E3E),
+                icon: const Icon(Icons.support_agent, color: Colors.white),
+                label: const Text("Emergency Help"),
+                onPressed: _showEmergencyDialog,
+              ),
+            ),
+      bottomNavigationBar: CustomBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: _onNavBarTap,
       ),
-      bottomNavigationBar:
-      CustomBottomNavBar(currentIndex: _currentIndex, onTap: _onNavBarTap),
     );
   }
 
@@ -254,7 +270,7 @@ Future<void> _checkVerificationStatus() async {
                 _buildServiceCard(
                   title: "E-Court",
                   subtitle:
-                  "Access virtual courtrooms and manage your cases digitally.",
+                      "Access virtual courtrooms and manage your cases digitally.",
                   icon: Icons.account_balance_outlined,
                   primaryText: "Enter a courtroom",
                   onPrimary: () => Navigator.pushNamed(context, '/eCourt'),
@@ -263,39 +279,39 @@ Future<void> _checkVerificationStatus() async {
                 _buildServiceCard(
                   title: "AI Doubt Forum",
                   subtitle:
-                  "Get AI-powered assistance for legal queries and case research.",
+                      "Get AI-powered assistance for legal queries and case research.",
                   icon: Icons.smart_toy_outlined,
                   primaryText: "Ask AI Agent",
                   onPrimary: () => Navigator.pushNamed(context, '/aiDoubt'),
                 ),
                 const SizedBox(height: 16),
-                  _buildServiceCard(
-                    title: "Join NGO",
-                    subtitle:
-                        "Reach out to registered NGOs for Collaboration. Explore and get Hands-on-experience.",
-                    primaryText: "Contact Now",
-                    onPrimary: () => Navigator.pushNamed(context, '/contactNgo'),
-                    icon: Icons.handshake_outlined,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildServiceCard(
-                    title: "Probono Opportunities",
-                    subtitle:
-                        "Use your legal expertise to uplift lives, empower communities, and deliver justice where it is needed most.",
-                    primaryText: "Search Now",
-                    onPrimary: () => Navigator.pushNamed(context, '/probono'),
-                    icon: Icons.contact_page_outlined,
-                  ),
-                  const SizedBox(height: 16),
-                  // 🔹 My Learning Section
-                  _buildServiceCard(
-                    title: "My learning",
-                    subtitle:
-                        "Your Path to Legal Knowledge Starts Here.Master Legal Basics, Anytime, Anywhere.",
-                    primaryText: "Start Learning",
-                    onPrimary: () => Navigator.pushNamed(context, '/mylearning'),
-                    icon: Icons.lightbulb_outline,
-                  ),
+                _buildServiceCard(
+                  title: "Join NGO",
+                  subtitle:
+                      "Reach out to registered NGOs for Collaboration. Explore and get Hands-on-experience.",
+                  primaryText: "Contact Now",
+                  onPrimary: () => Navigator.pushNamed(context, '/contactNgo'),
+                  icon: Icons.handshake_outlined,
+                ),
+                const SizedBox(height: 16),
+                _buildServiceCard(
+                  title: "Probono Opportunities",
+                  subtitle:
+                      "Use your legal expertise to uplift lives, empower communities, and deliver justice where it is needed most.",
+                  primaryText: "Search Now",
+                  onPrimary: () => Navigator.pushNamed(context, '/probono'),
+                  icon: Icons.contact_page_outlined,
+                ),
+                const SizedBox(height: 16),
+                // 🔹 My Learning Section
+                _buildServiceCard(
+                  title: "My learning",
+                  subtitle:
+                      "Your Path to Legal Knowledge Starts Here.Master Legal Basics, Anytime, Anywhere.",
+                  primaryText: "Start Learning",
+                  onPrimary: () => Navigator.pushNamed(context, '/mylearning'),
+                  icon: Icons.lightbulb_outline,
+                ),
                 const SizedBox(height: 20),
                 _buildSectionHeader("Recent Activity"),
                 _buildRecentActivity(),
@@ -310,7 +326,6 @@ Future<void> _checkVerificationStatus() async {
       ),
     );
   }
-
   Widget _buildWelcomeBanner() {
     return Container(
       width: double.infinity,
@@ -318,7 +333,7 @@ Future<void> _checkVerificationStatus() async {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF42A5F5),  Color(0xFF90CAF9)],
+          colors: [Color(0xFF42A5F5), Color(0xFF90CAF9)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -333,22 +348,24 @@ Future<void> _checkVerificationStatus() async {
             behavior: HitTestBehavior.translucent,
             onTap: _toggleSidebar,
             child: const CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, color: Color(0xFF42A5F5), size: 28),
-          ),
-            
+              radius: 26,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Color(0xFF42A5F5), size: 28),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Good ${_getGreeting()}, ${widget.userName}",
-                    style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  "Good ${_getGreeting()}, ${widget.userName}",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 if (_verificationStatus == "not_submitted")
                   GestureDetector(
@@ -356,18 +373,23 @@ Future<void> _checkVerificationStatus() async {
                     child: const Text(
                       "Get verified now!",
                       style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF0D47A1),
-                          decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.bold),
+                        fontSize: 14,
+                        color: Color(0xFF0D47A1),
+                        decoration: TextDecoration.underline,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   )
                 else if (_verificationStatus == "pending")
-                  const Text("Verification Pending",
-                      style: TextStyle(color: Colors.orange))
+                  const Text(
+                    "Verification Pending",
+                    style: TextStyle(color: Colors.orange),
+                  )
                 else
-                  const Text("You are verified ✓",
-                      style: TextStyle(color: Colors.green)),
+                  const Text(
+                    "You are verified ✓",
+                    style: TextStyle(color: Colors.green),
+                  ),
               ],
             ),
           ),
@@ -380,9 +402,17 @@ Future<void> _checkVerificationStatus() async {
     final menuItems = [
       {'icon': Icons.person, 'label': 'Profile', 'page': LawyerProfileScreen()},
       {'icon': Icons.call, 'label': 'Call Logs', 'page': CallLogsScreen()},
-      {'icon': Icons.payment, 'label': 'Transactions', 'page': TransactionsScreen()},
-      {'icon': Icons.location_on, 'label': 'Track Case', 'page': TrackCaseScreen()},
-        {
+      {
+        'icon': Icons.payment,
+        'label': 'Transactions',
+        'page': TransactionsScreen(),
+      },
+      {
+        'icon': Icons.location_on,
+        'label': 'Track Case',
+        'page': TrackCaseScreen(),
+      },
+      {
         'icon': Icons.share,
         'label': 'Share',
         'action': () async {
@@ -391,7 +421,9 @@ Future<void> _checkVerificationStatus() async {
             'Check out this amazing app: https://play.google.com/store/apps/details?id=com.example.app',
           );
         },
-      },{'icon': Icons.feedback, 'label': 'Feedback', 'page': FeedbackScreen()},
+      },
+      {'icon': Icons.feedback, 'label': 'Feedback', 'page': FeedbackScreen()},
+      {'icon': Icons.card_membership_outlined, 'label': 'Project Owners','page':ProjectInfoCard()},
     ];
 
     return Container(
@@ -407,11 +439,7 @@ Future<void> _checkVerificationStatus() async {
           end: Alignment.bottomRight,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(2, 0),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(2, 0)),
         ],
       ),
       child: Column(
@@ -450,7 +478,10 @@ Future<void> _checkVerificationStatus() async {
                   padding: const EdgeInsets.only(top: 8),
                   itemBuilder: (context, index) {
                     final animValue =
-                    (_menuItemsController.value - (index * 0.05)).clamp(0.0, 1.0);
+                        (_menuItemsController.value - (index * 0.05)).clamp(
+                          0.0,
+                          1.0,
+                        );
                     final opacity = animValue;
                     final offsetX = -30 * (1 - animValue);
 
@@ -459,20 +490,26 @@ Future<void> _checkVerificationStatus() async {
                       child: Transform.translate(
                         offset: Offset(offsetX, 0),
                         child: ListTile(
-                          leading: Icon(menuItems[index]['icon'] as IconData,
-                              color: Colors.blue.shade700),
-                          title: Text(menuItems[index]['label'] as String,
-                              style: const TextStyle(
-                                  color: Colors.black87, fontSize: 15)),
+                          leading: Icon(
+                            menuItems[index]['icon'] as IconData,
+                            color: Colors.blue.shade700,
+                          ),
+                          title: Text(
+                            menuItems[index]['label'] as String,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15,
+                            ),
+                          ),
                           onTap: () {
                             Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                menuItems[index]['page']
-                                    as Widget, // navigate to page
-                          ),
-                        );
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    menuItems[index]['page']
+                                        as Widget, // navigate to page
+                              ),
+                            );
                             _toggleSidebar();
                           },
                         ),
@@ -488,21 +525,28 @@ Future<void> _checkVerificationStatus() async {
     );
   }
 
-
-
   // Other builder helpers (unchanged)
   Widget _buildSectionHeader(String title) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Text(title,
-        style: const TextStyle(
-            fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+    child: Text(
+      title,
+      style: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+    ),
   );
 
   Widget _buildQuickActions() {
     final actions = [
       {'title': 'Meetings', 'route': '/meetings', 'icon': Icons.calendar_today},
       {'title': 'File Case', 'route': '/FileCase', 'icon': Icons.people},
-      {'title': 'Earnings', 'route': '/manager', 'icon': Icons.manage_accounts_sharp},
+      {
+        'title': 'Earnings',
+        'route': '/manager',
+        'icon': Icons.manage_accounts_sharp,
+      },
     ];
 
     return Padding(
@@ -522,16 +566,25 @@ Future<void> _checkVerificationStatus() async {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.05), blurRadius: 8)
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                      ),
                     ],
                   ),
-                  child: Icon(a['icon'] as IconData,
-                      color: Colors.blue.shade800, size: 30),
+                  child: Icon(
+                    a['icon'] as IconData,
+                    color: Colors.blue.shade800,
+                    size: 30,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(a['title'] as String,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w500)),
+                Text(
+                  a['title'] as String,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           );
@@ -539,6 +592,7 @@ Future<void> _checkVerificationStatus() async {
       ),
     );
   }
+
   Widget _buildDocuments() {
     final List<Map<String, dynamic>> docs = [
       {
@@ -615,7 +669,6 @@ Future<void> _checkVerificationStatus() async {
     );
   }
 
-
   Widget _buildServiceCard({
     required String title,
     required String subtitle,
@@ -653,25 +706,32 @@ Future<void> _checkVerificationStatus() async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(subtitle,
-                      style:
-                      const TextStyle(fontSize: 13, color: Colors.black54)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
                   const SizedBox(height: 10),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue.shade700,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: onPrimary,
-                    child: Text(primaryText,
-                        style: const TextStyle(color: Colors.white)),
+                    child: Text(
+                      primaryText,
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -688,19 +748,19 @@ Future<void> _checkVerificationStatus() async {
         'icon': Icons.calendar_today,
         'title': 'Meeting with Client - Rajesh',
         'subtitle': 'Today at 2PM',
-        'color': Colors.blue
+        'color': Colors.blue,
       },
       {
         'icon': Icons.gavel,
         'title': 'Case hearing scheduled',
         'subtitle': 'Tomorrow at 10AM',
-        'color': Colors.orange
+        'color': Colors.orange,
       },
       {
         'icon': Icons.description,
         'title': 'Document review completed',
         'subtitle': '2 hours ago',
-        'color': Colors.green
+        'color': Colors.green,
       },
     ];
 
@@ -712,7 +772,7 @@ Future<void> _checkVerificationStatus() async {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
           ],
         ),
         child: Column(
@@ -722,8 +782,10 @@ Future<void> _checkVerificationStatus() async {
                 backgroundColor: (a['color'] as Color).withOpacity(0.1),
                 child: Icon(a['icon'] as IconData, color: a['color'] as Color),
               ),
-              title: Text(a['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              title: Text(
+                a['title'] as String,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               subtitle: Text(a['subtitle'] as String),
               trailing: const Icon(Icons.chevron_right),
             );
@@ -741,15 +803,19 @@ Future<void> _checkVerificationStatus() async {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: const [
           TestimonialCard(
-              name: 'Rajesh Kumar',
-              text: 'Excellent legal advice! Very professional.'),
+            name: 'Rajesh Kumar',
+            text: 'Excellent legal advice! Very professional.',
+          ),
           SizedBox(width: 16),
           TestimonialCard(
-              name: 'Priya Sharma',
-              text: 'Quick response and great courtroom presence.'),
+            name: 'Priya Sharma',
+            text: 'Quick response and great courtroom presence.',
+          ),
           SizedBox(width: 16),
           TestimonialCard(
-              name: 'Amit Singh', text: 'Helped me win my case. Highly recommended!'),
+            name: 'Amit Singh',
+            text: 'Helped me win my case. Highly recommended!',
+          ),
         ],
       ),
     );
@@ -768,13 +834,20 @@ Future<void> _checkVerificationStatus() async {
       builder: (_) => AlertDialog(
         title: const Text('Emergency Legal Help'),
         content: const Text(
-            'Do you need immediate legal assistance? We can connect you with an emergency consultant right away.'),
+          'Do you need immediate legal assistance? We can connect you with an emergency consultant right away.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context),
-            child: const Text('Get Help Now', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Get Help Now',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
