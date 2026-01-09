@@ -23,7 +23,7 @@ import 'package:share_plus/share_plus.dart';
 import '../community/community.dart';
 import '../../services/language_manager.dart';
 import 'package:nyaya_connect/l10n/app_localizations.dart';
-
+import '../sidebar_menu/details.dart';
 class HomeScreenUser extends StatefulWidget {
   final String userName;
 
@@ -222,6 +222,7 @@ class _HomeScreenUserState extends State<HomeScreenUser>
         'label': 'Language',
         'action': _showLanguageDialog,
       },
+      {'icon': Icons.card_membership_outlined, 'label': 'Project Owners','page':ProjectInfoCard()},
     ];
 
     return Material(
