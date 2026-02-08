@@ -1086,18 +1086,6 @@ void toggleJudge(bool? value) {
                           return; // stop here, just expand the UI
                         }
                         if (!validateSignup()) return;
-                        final query = await FirebaseFirestore.instance
-                            .collection('users')
-                            .where('email', isEqualTo: signupEmail.text.trim())
-                            .get();
-
-                        if (query.docs.isNotEmpty) {
-                          // 2️⃣ Show snackbar if email already exists
-                          _showErrorSnack(
-                            'User with this email already exists. Please login.',
-                          );
-                          return; // stop signup
-                        }
 
                         // optional if you want reveal animation for signup
 
